@@ -1,0 +1,6 @@
+/* Estilos globais da aplicação */
+
+/* Remove estilos padrão que podem conflitar */
+#root {
+  min-height: 100vh;
+}

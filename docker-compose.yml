@@ -1,0 +1,20 @@
+services:
+  mema-sales-control:
+    container_name: cnt-mema-sales-control
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5175:5175"  # Porta customizada (5173 e 5174 já em uso)
+    volumes:
+      - ./:/app
+      - /app/node_modules  # Volume anônimo para node_modules (evita conflitos)
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # Necessário para hot-reload no Docker
+    stdin_open: true  # Mantém STDIN aberto (necessário para comandos interativos)
+    tty: true  # Aloca um pseudo-TTY (necessário para comandos interativos)
+    dns:
+      - 8.8.8.8      # Google DNS primário
+      - 8.8.4.4      # Google DNS secundário
+    command: ["sh", "-c", "tail -f /dev/null"]  # Mantém container rodando sem iniciar dev server
