@@ -1,5 +1,11 @@
 {
   "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-75e4be75-7ab3-4875-b3aa-254c840c7a89"
+      }
+    },
     "shadcn": {
       "command": "npx",
       "args": ["shadcn@latest", "mcp"]

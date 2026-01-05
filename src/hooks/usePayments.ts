@@ -14,7 +14,10 @@ export function usePayments(status?: PaymentStatus) {
           *,
           installment:installments(
             *,
-            sale:sales(*)
+            sale:sales(
+              *,
+              buyer:buyers(*)
+            )
           )
         `);
 
@@ -42,7 +45,10 @@ export function usePayment(id: string) {
           *,
           installment:installments(
             *,
-            sale:sales(*)
+            sale:sales(
+              *,
+              buyer:buyers(*)
+            )
           )
         `)
         .eq('id', id)
@@ -69,7 +75,7 @@ export function useCreatePayment() {
       if (error) throw error;
       return data as Payment;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['installments'] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });

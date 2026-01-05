@@ -17,7 +17,8 @@ CREATE TABLE sales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     buyer_id UUID NOT NULL REFERENCES buyers(id) ON DELETE CASCADE,
     product_description TEXT NOT NULL,
-    total_amount DECIMAL(10, 2) NOT NULL,
+    purchase_price DECIMAL(10, 2),
+    sale_price DECIMAL(10, 2) NOT NULL,
     sale_date DATE NOT NULL DEFAULT CURRENT_DATE,
     delivery_status delivery_status DEFAULT 'pending',
     notes TEXT,
@@ -76,10 +77,10 @@ BEGIN
     -- Atualiza status da parcela baseado no paid_amount
     UPDATE installments
     SET status = CASE
-        WHEN paid_amount >= amount THEN 'paid'
-        WHEN paid_amount > 0 THEN 'partial'
-        WHEN due_date < CURRENT_DATE THEN 'late'
-        ELSE 'pending'
+        WHEN paid_amount >= amount THEN 'paid'::installment_status
+        WHEN paid_amount > 0 THEN 'partial'::installment_status
+        WHEN due_date < CURRENT_DATE THEN 'late'::installment_status
+        ELSE 'pending'::installment_status
     END
     WHERE id = NEW.installment_id;
     
@@ -106,8 +107,8 @@ CREATE OR REPLACE FUNCTION mark_late_installments()
 RETURNS void AS $$
 BEGIN
     UPDATE installments
-    SET status = 'late'
-    WHERE status = 'pending'
+    SET status = 'late'::installment_status
+    WHERE status = 'pending'::installment_status
     AND due_date < CURRENT_DATE
     AND paid_amount < amount;
 END;

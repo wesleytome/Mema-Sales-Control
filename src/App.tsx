@@ -8,8 +8,10 @@ import { Layout } from '@/components/layout/Layout';
 import { Login } from '@/pages/auth/Login';
 import { Dashboard } from '@/pages/admin/Dashboard';
 import { Buyers } from '@/pages/admin/Buyers';
+import { BuyerDetail } from '@/pages/admin/BuyerDetail';
 import { Sales } from '@/pages/admin/Sales';
 import { SaleDetail } from '@/pages/admin/SaleDetail';
+import { SaleEdit } from '@/pages/admin/SaleEdit';
 import { Payments } from '@/pages/admin/Payments';
 import { PaymentUpload } from '@/pages/public/PaymentUpload';
 
@@ -64,6 +66,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/compradores/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <BuyerDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/vendas"
         element={
           <ProtectedRoute>
@@ -79,6 +91,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <SaleDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vendas/:id/editar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SaleEdit />
             </Layout>
           </ProtectedRoute>
         }

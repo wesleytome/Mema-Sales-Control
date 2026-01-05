@@ -1,4 +1,4 @@
-// Página de login
+// Página de login - Mobile First
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ShoppingCart } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -33,12 +33,21 @@ export function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
-            Entre com suas credenciais para acessar o sistema
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4 py-8">
+      {/* Logo / Branding */}
+      <div className="mb-6 text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <ShoppingCart className="h-7 w-7" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Vendas Parceladas</h1>
+        <p className="text-sm text-gray-600 mt-1">Sistema de Gestão</p>
+      </div>
+
+      <Card className="w-full max-w-sm shadow-lg">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-xl sm:text-2xl">Entrar</CardTitle>
+          <CardDescription className="text-sm">
+            Digite suas credenciais para acessar
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -46,11 +55,13 @@ export function Login() {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-sm">{error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -59,26 +70,40 @@ export function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
+                className="h-11"
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
+                className="h-11"
+                autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full h-11 text-base font-medium" 
+              disabled={loading}
+            >
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
         </CardContent>
       </Card>
+
+      <p className="mt-6 text-center text-xs text-gray-500">
+        © {new Date().getFullYear()} Vendas Parceladas
+      </p>
     </div>
   );
 }
-

@@ -1,25 +1,16 @@
-// Página de vendas
+// Página de vendas - Mobile First
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSales, useDeleteSale } from '@/hooks/useSales';
-import { useBuyers } from '@/hooks/useBuyers';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Eye } from 'lucide-react';
-import type { Sale, Installment } from '@/types';
+import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
+import { FilterableTable, type FilterableColumn } from '@/components/ui/filterable-table';
+import { Plus, Trash2, Eye, Pencil } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DELIVERY_STATUS_OPTIONS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import type { Sale } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +25,7 @@ import {
 import { SaleForm } from '@/components/sales/SaleForm';
 
 export function Sales() {
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: sales, isLoading } = useSales();
   const deleteSale = useDeleteSale();
@@ -47,29 +39,31 @@ export function Sales() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Vendas</h1>
-          <p className="text-gray-600 mt-1">Gerencie suas vendas e parcelas</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Vendas</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Gerencie suas vendas e parcelas</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)}>
+        <ResponsiveDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          trigger={
+            <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nova Venda
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nova Venda</DialogTitle>
-              <DialogDescription>
-                Crie uma nova venda e configure as parcelas
-              </DialogDescription>
-            </DialogHeader>
-            <SaleForm onSuccess={() => setIsDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+          }
+          title="Nova Venda"
+          description="Crie uma nova venda e configure as parcelas"
+          className="space-y-6"
+        >
+          <SaleForm
+            onSuccess={() => {
+              setIsDialogOpen(false);
+            }}
+          />
+        </ResponsiveDialog>
       </div>
 
       {isLoading ? (
@@ -79,99 +73,155 @@ export function Sales() {
           ))}
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Comprador</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Valor Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sales && sales.length > 0 ? (
-                sales.map((sale: any) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>
-                      {format(new Date(sale.sale_date), 'dd/MM/yyyy', {
-                        locale: ptBR,
-                      })}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {sale.buyer?.name || '-'}
-                    </TableCell>
-                    <TableCell>{sale.product_description}</TableCell>
-                    <TableCell>
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(sale.total_amount)}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          sale.delivery_status === 'delivered'
-                            ? 'bg-green-100 text-green-800'
-                            : sale.delivery_status === 'sent'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {
-                          DELIVERY_STATUS_OPTIONS.find(
-                            (opt) => opt.value === sale.delivery_status
-                          )?.label
-                        }
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/vendas/${sale.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(sale.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500">
-                    Nenhuma venda cadastrada
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <FilterableTable
+          data={sales || []}
+          columns={[
+            {
+              id: 'date',
+              header: 'Data',
+              accessor: (sale: Sale) =>
+                format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR }),
+              filterable: true,
+              defaultVisible: true,
+            },
+            {
+              id: 'buyer',
+              header: 'Comprador',
+              accessor: (sale: Sale) => sale.buyer?.name || '-',
+              filterable: true,
+              defaultVisible: true,
+            },
+            {
+              id: 'product',
+              header: 'Produto',
+              accessor: 'product_description',
+              filterable: true,
+              defaultVisible: true,
+            },
+            {
+              id: 'sale_price',
+              header: 'Valor de Venda',
+              accessor: (sale: Sale) =>
+                new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(sale.sale_price),
+              filterable: false,
+              defaultVisible: true,
+            },
+            {
+              id: 'purchase_price',
+              header: 'Valor de Compra',
+              accessor: (sale: Sale) =>
+                sale.purchase_price
+                  ? new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(sale.purchase_price)
+                  : '-',
+              filterable: false,
+              defaultVisible: false,
+            },
+            {
+              id: 'profit',
+              header: 'Lucro',
+              accessor: (sale: Sale) => {
+                if (!sale.purchase_price) return '-';
+                const profit = sale.sale_price - sale.purchase_price;
+                return (
+                  <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(profit)}
+                  </span>
+                );
+              },
+              filterable: false,
+              defaultVisible: false,
+            },
+            {
+              id: 'delivery_status',
+              header: 'Status',
+              accessor: (sale: Sale) => (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    sale.delivery_status === 'delivered'
+                      ? 'bg-green-100 text-green-800'
+                      : sale.delivery_status === 'sent'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {
+                    DELIVERY_STATUS_OPTIONS.find(
+                      (opt) => opt.value === sale.delivery_status
+                    )?.label
+                  }
+                </span>
+              ),
+              filterable: true,
+              filterType: 'select',
+              filterOptions: DELIVERY_STATUS_OPTIONS.map((opt) => ({
+                label: opt.label,
+                value: opt.value,
+              })),
+              defaultVisible: true,
+            },
+          ] as FilterableColumn<Sale>[]}
+          keyExtractor={(sale: Sale) => sale.id}
+          emptyMessage="Nenhuma venda cadastrada"
+          searchPlaceholder="Buscar vendas..."
+          mobileCardTitle={(sale: Sale) => sale.product_description}
+          mobileCardSubtitle={(sale: Sale) => (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm text-gray-600">{sale.buyer?.name || 'Sem comprador'}</span>
+              <span className="text-xs text-gray-500">
+                {format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR })}
+              </span>
+            </div>
+          )}
+          actions={(sale: Sale) => (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to={`/vendas/${sale.id}`}>
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/vendas/${sale.id}/editar`)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(sale.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+        />
       )}
     </div>
   );
