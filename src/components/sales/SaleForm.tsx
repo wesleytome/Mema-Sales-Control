@@ -18,6 +18,7 @@ import { BuyerSelect } from '@/components/ui/buyer-select';
 import { Textarea } from '@/components/ui/textarea';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { CPFInput, validateCPF } from '@/components/ui/cpf-input';
+import { CEPInput } from '@/components/ui/cep-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, CalendarIcon, UserPlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DELIVERY_STATUS_OPTIONS } from '@/lib/constants';
+import { DELIVERY_STATUS_OPTIONS, BRAZILIAN_STATES } from '@/lib/constants';
 
 const buyerSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -34,6 +35,14 @@ const buyerSchema = z.object({
   cpf: z.string().optional().refine((val) => !val || val.length === 0 || validateCPF(val), {
     message: 'CPF inválido',
   }),
+  cep: z.string().optional(),
+  address: z.string().optional(),
+  address_number: z.string().optional(),
+  address_complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  address_reference: z.string().optional(),
 });
 
 // Schema base da venda (buyer_id será validado condicionalmente)
@@ -105,8 +114,32 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       phone: '',
       email: '',
       cpf: '',
+      cep: '',
+      address: '',
+      address_number: '',
+      address_complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      address_reference: '',
     },
   });
+
+  const handleAddressFound = (address: {
+    logradouro: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    complemento?: string;
+  }) => {
+    buyerForm.setValue('address', address.logradouro);
+    buyerForm.setValue('neighborhood', address.bairro);
+    buyerForm.setValue('city', address.cidade);
+    buyerForm.setValue('state', address.estado);
+    if (address.complemento) {
+      buyerForm.setValue('address_complement', address.complemento);
+    }
+  };
 
 
   // Resetar formulário quando a venda mudar
@@ -416,14 +449,14 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
               phone: buyerData.phone || null,
               email: buyerData.email || null,
               cpf: buyerData.cpf || null,
-              cep: null,
-              address: null,
-              address_number: null,
-              address_complement: null,
-              neighborhood: null,
-              city: null,
-              state: null,
-              address_reference: null,
+              cep: buyerData.cep || null,
+              address: buyerData.address || null,
+              address_number: buyerData.address_number || null,
+              address_complement: buyerData.address_complement || null,
+              neighborhood: buyerData.neighborhood || null,
+              city: buyerData.city || null,
+              state: buyerData.state || null,
+              address_reference: buyerData.address_reference || null,
             });
             buyerId = newBuyer.id;
             // Atualiza o select com o novo comprador
@@ -661,6 +694,143 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                       )}
                     />
                   </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-gray-900">Dados de Endereço</h3>
+                    <p className="text-xs text-gray-500">Preencha os dados de endereço do comprador</p>
+                  </div>
+
+                  <FormField
+                    control={buyerForm.control}
+                    name="cep"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>CEP</FormLabel>
+                        <FormControl>
+                          <CEPInput
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            onAddressFound={handleAddressFound}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={buyerForm.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2 sm:col-span-2">
+                          <FormLabel>Logradouro</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Rua, Avenida, etc." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={buyerForm.control}
+                      name="address_number"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="123" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={buyerForm.control}
+                    name="address_complement"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>Complemento</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Apto, Bloco, Sala, etc." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={buyerForm.control}
+                    name="neighborhood"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>Bairro</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Nome do bairro" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={buyerForm.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel>Cidade</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nome da cidade" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={buyerForm.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel>Estado (UF)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o estado" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {BRAZILIAN_STATES.map((state) => (
+                                <SelectItem key={state.value} value={state.value}>
+                                  {state.label} ({state.value})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={buyerForm.control}
+                    name="address_reference"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>Referência</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Ponto de referência para entregas" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </Form>
             </div>
@@ -735,7 +905,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
             name="purchase_price"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel>Valor de Compra</FormLabel>
+                <FormLabel>Custo do produto</FormLabel>
                 <FormControl>
                   <CurrencyInput
                     value={field.value ?? 0}
