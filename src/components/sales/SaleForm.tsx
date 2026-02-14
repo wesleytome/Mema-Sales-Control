@@ -579,17 +579,17 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Formulário de Venda */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <FormField
               control={form.control}
               name="buyer_id"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel>Comprador *</FormLabel>
+                  <FormLabel className="text-sm font-medium text-foreground/90">Comprador *</FormLabel>
                   <FormControl>
                     <BuyerSelect
                       value={field.value}
@@ -606,14 +606,14 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
 
           {/* Formulário de Novo Comprador */}
           {showBuyerForm && (
-            <div className="border rounded-lg p-5 space-y-4 bg-gray-50">
+            <div className="border border-border/60 rounded-2xl p-6 space-y-5 bg-gradient-to-br from-accent/30 to-background shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <UserPlus className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+                    <UserPlus className="h-5 w-5 text-primary" />
                     Novo Comprador
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1.5">
                     Preencha os dados do comprador antes de criar a venda
                   </p>
                 </div>
@@ -630,14 +630,14 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                 </Button>
               </div>
               <Form {...buyerForm}>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     <FormField
                       control={buyerForm.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem className="space-y-2">
-                          <FormLabel>Nome *</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground/90">Nome *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Nome completo" />
                           </FormControl>
@@ -695,11 +695,11 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                     />
                   </div>
 
-                  <Separator className="my-4" />
+                  <Separator className="my-5 border-border/40" />
 
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-gray-900">Dados de Endereço</h3>
-                    <p className="text-xs text-gray-500">Preencha os dados de endereço do comprador</p>
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-semibold text-foreground">Dados de Endereço</h3>
+                    <p className="text-xs text-muted-foreground">Preencha os dados de endereço do comprador</p>
                   </div>
 
                   <FormField
@@ -836,16 +836,16 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
             </div>
           )}
 
-          <Separator className={showBuyerForm ? '' : 'hidden'} />
+          <Separator className={cn(showBuyerForm ? 'border-border/40' : 'hidden')} />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
 
           <FormField
             control={form.control}
             name="sale_date"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel>Data da Venda *</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground/90">Data da Venda *</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -885,7 +885,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           name="product_description"
           render={({ field }) => (
             <FormItem className="space-y-2">
-              <FormLabel>Descrição do Produto *</FormLabel>
+              <FormLabel className="text-sm font-medium text-foreground/90">Descrição do Produto *</FormLabel>
               <FormControl>
                 <ProductAutocomplete
                   value={field.value}
@@ -899,13 +899,13 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           <FormField
             control={form.control}
             name="purchase_price"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel>Custo do produto</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground/90">Custo do produto</FormLabel>
                 <FormControl>
                   <CurrencyInput
                     value={field.value ?? 0}
@@ -923,7 +923,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
             name="sale_price"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel>Valor de Venda *</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground/90">Valor de Venda *</FormLabel>
                 <FormControl>
                   <CurrencyInput
                     value={field.value}
@@ -937,13 +937,13 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           <FormField
             control={form.control}
             name="delivery_status"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel>Status de Entrega</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground/90">Status de Entrega</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -969,7 +969,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           name="notes"
           render={({ field }) => (
             <FormItem className="space-y-2">
-              <FormLabel>Observações</FormLabel>
+              <FormLabel className="text-sm font-medium text-foreground/90">Observações</FormLabel>
               <FormControl>
                 <Textarea {...field} placeholder="Observações adicionais..." />
               </FormControl>
@@ -978,9 +978,9 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           )}
         />
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Parcelas</h3>
+            <h3 className="text-lg font-semibold text-foreground">Parcelas</h3>
             <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
               <TabsList>
                 <TabsTrigger value="auto">Automático</TabsTrigger>
@@ -1041,14 +1041,14 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
 
           <div className="space-y-2">
             {fields.map((field, index) => (
-              <div key={field.id} className="flex gap-3 items-end p-5 border rounded-lg">
+              <div key={field.id} className="flex gap-3 items-end p-5 border border-border/60 rounded-xl bg-card shadow-sm">
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <FormField
                     control={form.control}
                     name={`installments.${index}.amount`}
                     render={({ field }) => (
                       <FormItem className="space-y-2">
-                        <FormLabel>Valor</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground/90">Valor</FormLabel>
                         <FormControl>
                           <CurrencyInput
                             value={field.value}
@@ -1071,7 +1071,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                     name={`installments.${index}.due_date`}
                     render={({ field }) => (
                       <FormItem className="space-y-2">
-                        <FormLabel>Data de Vencimento</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground/90">Data de Vencimento</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -1119,7 +1119,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-3 pt-2">
           {isEditMode ? (
             <Button type="submit" disabled={createSale.isPending || updateSale.isPending}>
               {createSale.isPending || updateSale.isPending

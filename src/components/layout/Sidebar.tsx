@@ -43,11 +43,16 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        'flex h-full flex-col bg-white border-r transition-all duration-300 fixed left-0 top-0 z-50',
+        'flex h-full flex-col',
+        'bg-gradient-to-b from-white to-gray-50/50',
+        'border-r border-border/60',
+        'backdrop-blur-xl',
+        'transition-all duration-300 fixed left-0 top-0 z-50',
+        'shadow-sm',
         isCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      <div className={cn('flex h-16 items-center border-b transition-all duration-300', isCollapsed ? 'px-2 justify-center' : 'px-4 md:px-6')}>
+      <div className={cn('flex h-16 items-center border-b border-border/60 transition-all duration-300', isCollapsed ? 'px-2 justify-center' : 'px-4 md:px-6')}>
         {!isCollapsed && (
           <h1 className="text-lg md:text-xl font-bold truncate">Vendas Parceladas</h1>
         )}
@@ -73,11 +78,12 @@ export function Sidebar() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
+                  'transition-all duration-200',
                   isCollapsed ? 'justify-center' : '',
                   isActive
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-primary/10 text-primary shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 )}
               >
                 <item.icon className="h-5 w-5 shrink-0" />
@@ -102,7 +108,7 @@ export function Sidebar() {
           })}
         </TooltipProvider>
       </nav>
-      <div className="border-t p-4">
+      <div className="border-t border-border/60 p-4">
         <TooltipProvider delayDuration={0}>
           {isCollapsed ? (
             <Tooltip>
