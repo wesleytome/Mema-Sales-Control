@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build and Test
+    name: Build and Quality Gates
     runs-on: ubuntu-latest
 
     steps:
@@ -29,9 +33,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run linter
+      - name: Lint
         run: pnpm lint
-        continue-on-error: true
+
+      - name: Typecheck
+        run: pnpm exec tsc -b
 
       - name: Build application
         run: pnpm build
@@ -45,4 +51,21 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+      - name: Lint changed files only (PR)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git fetch --no-tags --prune --depth=1 origin ${{ github.base_ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+            '*.ts' '*.tsx' '*.js' '*.jsx' \
+            | tr '\n' ' ')
 
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No JS/TS files changed."
+            exit 0
+          fi
+
+          echo "Linting changed files:"
+          echo "$CHANGED_FILES"
+
+          pnpm exec eslint $CHANGED_FILES

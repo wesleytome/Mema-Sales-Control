@@ -1,5 +1,4 @@
-// Página pública para upload de comprovantes - Mobile First
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSale } from '@/hooks/useSales';
 import { useCreatePayment } from '@/hooks/usePayments';
@@ -8,121 +7,145 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, CheckCircle, AlertCircle, DollarSign, Package, User, Hash } from 'lucide-react';
+import {
+  Upload,
+  CheckCircle,
+  AlertCircle,
+  DollarSign,
+  Package,
+  User,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  Clock,
+  CalendarIcon,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, INSTALLMENT_STATUS_OPTIONS, STORAGE_BUCKET_NAME } from '@/lib/constants';
+import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, STORAGE_BUCKET_NAME, INSTALLMENT_STATUS_OPTIONS } from '@/lib/constants';
 import { toast } from 'sonner';
+import type { Installment } from '@/types';
+
+type WizardStep = 'summary' | 'amount' | 'proof' | 'confirm';
 
 export function PaymentUpload() {
   const { saleId } = useParams<{ saleId: string }>();
   const { data: sale, isLoading } = useSale(saleId || '');
   const createPayment = useCreatePayment();
-  const [selectedInstallment, setSelectedInstallment] = useState<string>('');
+
+  const [step, setStep] = useState<WizardStep>('summary');
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [wantsProof, setWantsProof] = useState<boolean | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [showInstallments, setShowInstallments] = useState(false);
+  const [paymentDate, setPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  const totalPaid = useMemo(
+    () => sale?.installments.reduce((sum, inst) => sum + inst.paid_amount, 0) || 0,
+    [sale]
+  );
+  const totalPending = useMemo(
+    () => (sale ? sale.sale_price - totalPaid : 0),
+    [sale, totalPaid]
+  );
+
+  const nextPendingInstallment = useMemo(() => {
+    if (!sale) return null;
+    return sale.installments.find((inst) => inst.status !== 'paid') || null;
+  }, [sale]);
+
+  const targetInstallment = useMemo(() => {
+    if (!sale) return null;
+    if (sale.payment_mode === 'flexible') return sale.installments[0] || null;
+    return nextPendingInstallment;
+  }, [sale, nextPendingInstallment]);
+
+  const handleStartPayment = () => {
+    if (!targetInstallment) return;
+    if (sale?.payment_mode === 'fixed') {
+      const remaining = targetInstallment.amount - targetInstallment.paid_amount;
+      setPaymentAmount(remaining);
+    } else {
+      setPaymentAmount(0);
+    }
+    setStep('amount');
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-
-    // Validar tipo de arquivo
     if (!ALLOWED_FILE_TYPES.includes(selectedFile.type)) {
       toast.error('Tipo de arquivo não permitido. Use JPG, PNG ou PDF.');
       return;
     }
-
-    // Validar tamanho
     if (selectedFile.size > MAX_FILE_SIZE) {
       toast.error('Arquivo muito grande. Tamanho máximo: 5MB.');
       return;
     }
-
     setFile(selectedFile);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedInstallment || paymentAmount <= 0) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!targetInstallment || paymentAmount <= 0) return;
     setUploading(true);
 
     try {
       let proofUrl: string | null = null;
 
-      // Upload do arquivo para Supabase Storage (opcional)
       if (file) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${saleId}/${selectedInstallment}/${Date.now()}.${fileExt}`;
-        const filePath = fileName;
-
+        const fileName = `${saleId}/${targetInstallment.id}/${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from(STORAGE_BUCKET_NAME)
-          .upload(filePath, file);
-
+          .upload(fileName, file);
         if (uploadError) throw uploadError;
-
-        // Obter URL pública do arquivo
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(filePath);
-        
+        const { data: { publicUrl } } = supabase.storage
+          .from(STORAGE_BUCKET_NAME)
+          .getPublicUrl(fileName);
         proofUrl = publicUrl;
       }
 
-      // Criar registro de pagamento
       await createPayment.mutateAsync({
-        installment_id: selectedInstallment,
+        installment_id: targetInstallment.id,
         amount: paymentAmount,
         proof_url: proofUrl,
         status: 'pending',
+        origin: 'buyer',
+        payment_date: paymentDate,
         rejection_reason: null,
       });
 
-      // Reset form
-      setSelectedInstallment('');
-      setPaymentAmount(0);
-      setFile(null);
-      const fileInput = document.getElementById('proof-file') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
-      toast.success('Comprovante enviado com sucesso! Aguarde a aprovação.');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao enviar comprovante');
+      setSubmitted(true);
+      setStep('confirm');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao enviar pagamento';
+      toast.error(message);
     } finally {
       setUploading(false);
     }
   };
 
-  const selectedInst = sale?.installments.find(
-    (inst) => inst.id === selectedInstallment
-  );
+  const handleReset = () => {
+    setStep('summary');
+    setPaymentAmount(0);
+    setWantsProof(null);
+    setFile(null);
+    setSubmitted(false);
+    setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
+  };
 
-  // Preencher automaticamente o valor do pagamento quando uma parcela for selecionada
-  useEffect(() => {
-    if (selectedInst) {
-      const remainingAmount = selectedInst.amount - selectedInst.paid_amount;
-      setPaymentAmount(remainingAmount);
-    } else {
-      setPaymentAmount(0);
-    }
-  }, [selectedInst]);
+  const balanceAfterPayment = totalPending - paymentAmount;
+  const isAmountValid = paymentAmount > 0 && paymentAmount <= totalPending;
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl space-y-4">
-          <Skeleton className="h-64 w-full" />
+        <div className="w-full max-w-lg space-y-4">
           <Skeleton className="h-64 w-full" />
         </div>
       </div>
@@ -145,292 +168,400 @@ export function PaymentUpload() {
     );
   }
 
-  const totalPaid = sale.installments.reduce(
-    (sum, inst) => sum + inst.paid_amount,
-    0
-  );
-  const totalPending = sale.sale_price - totalPaid;
-
-  // Renderiza card de parcela para mobile
-  const renderInstallmentCard = (installment: any) => {
-    const remaining = installment.amount - installment.paid_amount;
+  if (totalPending <= 0) {
     return (
-      <Card key={installment.id} className="overflow-hidden">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary/10 text-primary rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-                {installment.installment_number}
-              </div>
-              <span className="font-medium">Parcela {installment.installment_number}</span>
-            </div>
-            <Badge
-              className={
-                installment.status === 'paid'
-                  ? 'bg-green-100 text-green-800'
-                  : installment.status === 'late'
-                  ? 'bg-red-100 text-red-800'
-                  : installment.status === 'partial'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-gray-100 text-gray-800'
-              }
-            >
-              {INSTALLMENT_STATUS_OPTIONS.find((opt) => opt.value === installment.status)?.label}
-            </Badge>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+            <CardTitle>Compra Quitada!</CardTitle>
+            <CardDescription>
+              Todos os pagamentos desta compra já foram realizados.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  const formatBRL = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const renderInstallmentCard = (inst: Installment) => {
+    const remaining = inst.amount - inst.paid_amount;
+    return (
+      <div key={inst.id} className="flex items-center justify-between py-3 border-b last:border-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 text-primary rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">
+            {inst.installment_number}
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <span className="text-gray-500">Valor:</span>
-              <p className="font-medium">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(installment.amount)}
+          <div>
+            <p className="text-sm font-medium">Parcela {inst.installment_number}</p>
+            {inst.due_date && (
+              <p className="text-xs text-gray-500">
+                {format(new Date(inst.due_date), 'dd/MM/yyyy', { locale: ptBR })}
               </p>
-            </div>
-            <div>
-              <span className="text-gray-500">Pago:</span>
-              <p className="font-medium text-green-600">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(installment.paid_amount)}
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-500">Vencimento:</span>
-              <p className="font-medium">
-                {format(new Date(installment.due_date), 'dd/MM/yyyy', { locale: ptBR })}
-              </p>
-            </div>
-            {remaining > 0 && (
-              <div>
-                <span className="text-gray-500">Restante:</span>
-                <p className="font-medium text-orange-600">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(remaining)}
-                </p>
-              </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="text-right">
+          <Badge
+            className={
+              inst.status === 'paid'
+                ? 'bg-green-100 text-green-800'
+                : inst.status === 'partial'
+                ? 'bg-yellow-100 text-yellow-800'
+                : inst.status === 'late'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-800'
+            }
+          >
+            {INSTALLMENT_STATUS_OPTIONS.find((o) => o.value === inst.status)?.label}
+          </Badge>
+          {remaining > 0 && (
+            <p className="text-xs text-orange-600 mt-1">{formatBRL(remaining)} restante</p>
+          )}
+        </div>
+      </div>
     );
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8 px-3 sm:px-4">
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold">Envio de Comprovante</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">
-            Envie o comprovante de pagamento da sua compra
-          </p>
-        </div>
-
-        {/* Informações da venda */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Informações da Compra
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <Package className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-600">Produto</p>
-                  <p className="font-medium">{sale.product_description}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <User className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-600">Comprador</p>
-                  <p className="font-medium">{sale.buyer?.name || '-'}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-              <div className="bg-gray-50 p-3 rounded-lg text-center">
-                <p className="text-xs sm:text-sm text-gray-600">Valor Total</p>
-                <p className="font-bold text-base sm:text-lg">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(sale.sale_price)}
-                </p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg text-center">
-                <p className="text-xs sm:text-sm text-gray-600">Total Pago</p>
-                <p className="font-bold text-base sm:text-lg text-green-600">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(totalPaid)}
-                </p>
-              </div>
-            </div>
-            
-            {totalPending > 0 && (
-              <div className="bg-orange-50 p-3 rounded-lg text-center">
-                <p className="text-xs sm:text-sm text-gray-600">Valor Pendente</p>
-                <p className="font-bold text-lg sm:text-xl text-orange-600">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(totalPending)}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Parcelas */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Hash className="h-5 w-5" />
-              Parcelas
-            </CardTitle>
-            <CardDescription>
-              Status de cada parcela da compra
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {sale.installments.map(renderInstallmentCard)}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Formulário de upload */}
-        <Card className="border-primary/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Enviar Comprovante
-            </CardTitle>
-            <CardDescription>
-              Selecione a parcela e envie o comprovante de pagamento
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="installment">Parcela *</Label>
-                <Select
-                  value={selectedInstallment}
-                  onValueChange={setSelectedInstallment}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione a parcela" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sale.installments
-                      .filter((inst) => inst.status !== 'paid')
-                      .map((installment) => {
-                        const remaining = installment.amount - installment.paid_amount;
-                        return (
-                          <SelectItem key={installment.id} value={installment.id}>
-                            Parcela {installment.installment_number} -{' '}
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(remaining)}{' '}
-                            restante
-                          </SelectItem>
-                        );
-                      })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedInstallment && selectedInst && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Valor do Pagamento *</Label>
-                    <CurrencyInput
-                      id="amount"
-                      value={paymentAmount}
-                      onChange={(value) => setPaymentAmount(value)}
-                      placeholder="R$ 0,00"
-                    />
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      Valor restante:{' '}
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(selectedInst.amount - selectedInst.paid_amount)}
-                    </p>
+      <div className="max-w-lg mx-auto space-y-4">
+        {step === 'summary' && (
+          <>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Resumo da Compra
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2">
+                    <Package className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Produto</p>
+                      <p className="text-sm font-medium">{sale.product_description}</p>
+                    </div>
                   </div>
+                  <div className="flex items-start gap-2">
+                    <User className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Comprador</p>
+                      <p className="text-sm font-medium">{sale.buyer?.name || '-'}</p>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="proof-file">Comprovante</Label>
-                    <div className="relative">
-                      <Input
-                        id="proof-file"
-                        type="file"
-                        accept={ALLOWED_FILE_TYPES.join(',')}
-                        onChange={handleFileChange}
-                        className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 opacity-0 absolute w-full h-full"
-                      />
-                      <div className="flex items-center gap-2 border border-input rounded-md px-3 py-2 bg-background min-h-[2.25rem]">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('proof-file')?.click()}
-                          className="shrink-0"
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t">
+                  <div className="text-center p-2 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Total</p>
+                    <p className="text-sm font-bold">{formatBRL(sale.sale_price)}</p>
+                  </div>
+                  <div className="text-center p-2 bg-green-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Pago</p>
+                    <p className="text-sm font-bold text-green-600">{formatBRL(totalPaid)}</p>
+                  </div>
+                  <div className="text-center p-2 bg-orange-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Pendente</p>
+                    <p className="text-sm font-bold text-orange-600">{formatBRL(totalPending)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {submitted && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  Pagamento enviado, aguardando confirmação do vendedor.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Card className="border-primary/30">
+              <CardContent className="pt-6 space-y-4">
+                {sale.payment_mode === 'fixed' && nextPendingInstallment ? (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-base">Próximo passo</h3>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">
+                          Parcela {nextPendingInstallment.installment_number}
+                        </span>
+                        <Badge
+                          className={
+                            nextPendingInstallment.status === 'late'
+                              ? 'bg-red-100 text-red-800'
+                              : nextPendingInstallment.status === 'partial'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }
                         >
-                          Escolher arquivo
-                        </Button>
-                        <span className="text-sm text-muted-foreground flex-1 truncate">
-                          {file ? file.name : 'Nenhum arquivo selecionado'}
+                          {INSTALLMENT_STATUS_OPTIONS.find(
+                            (o) => o.value === nextPendingInstallment.status
+                          )?.label}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Valor restante</span>
+                        <span className="font-bold text-lg">
+                          {formatBRL(
+                            nextPendingInstallment.amount - nextPendingInstallment.paid_amount
+                          )}
+                        </span>
+                      </div>
+                      {nextPendingInstallment.due_date && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Vencimento</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(nextPendingInstallment.due_date), 'dd/MM/yyyy', {
+                              locale: ptBR,
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-base">Próximo passo</h3>
+                    <p className="text-sm text-gray-600">
+                      Você pode informar qualquer valor que pagou.
+                    </p>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Saldo atual</span>
+                        <span className="font-bold text-lg text-orange-600">
+                          {formatBRL(totalPending)}
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Formatos aceitos: JPG, PNG, PDF (máx. 5MB) - Opcional
-                    </p>
-                    {file && (
-                      <Alert className="bg-green-50 border-green-200">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-700">
-                          Arquivo selecionado: {file.name} ({(file.size / 1024).toFixed(2)} KB)
-                        </AlertDescription>
-                      </Alert>
+                  </div>
+                )}
+
+                <Button className="w-full h-12 text-base" onClick={handleStartPayment}>
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Informar Pagamento
+                </Button>
+              </CardContent>
+            </Card>
+
+            {sale.payment_mode === 'fixed' && sale.installments.length > 1 && (
+              <div>
+                <Button
+                  variant="ghost"
+                  className="w-full text-sm text-gray-500"
+                  onClick={() => setShowInstallments(!showInstallments)}
+                >
+                  {showInstallments ? (
+                    <ChevronUp className="mr-2 h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="mr-2 h-4 w-4" />
+                  )}
+                  Ver detalhes das parcelas
+                </Button>
+                {showInstallments && (
+                  <Card className="mt-2">
+                    <CardContent className="pt-4">
+                      {sale.installments.map(renderInstallmentCard)}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {step === 'amount' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Etapa 1 de 3 - Valor</CardTitle>
+              <CardDescription>
+                {sale.payment_mode === 'fixed'
+                  ? 'Informe o valor do pagamento'
+                  : 'Informe qualquer valor que você pagou'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <CurrencyInput
+                  value={paymentAmount}
+                  onChange={(value) => setPaymentAmount(value)}
+                  placeholder="R$ 0,00"
+                  className="h-14 text-lg"
+                />
+                {paymentAmount > 0 && (
+                  <div
+                    className={`text-sm p-3 rounded-lg ${
+                      isAmountValid ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}
+                  >
+                    {isAmountValid ? (
+                      <>
+                        <DollarSign className="h-3 w-3 inline mr-1" />
+                        Saldo após pagamento: {formatBRL(balanceAfterPayment)}
+                      </>
+                    ) : paymentAmount > totalPending ? (
+                      'Valor não pode ser maior que o saldo pendente'
+                    ) : (
+                      'Valor deve ser maior que zero'
                     )}
                   </div>
-                </>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Data do pagamento
+                </label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setStep('summary')}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!isAmountValid}
+                  onClick={() => setStep('proof')}
+                >
+                  Próximo
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'proof' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Etapa 2 de 3 - Comprovante</CardTitle>
+              <CardDescription>Você quer enviar comprovante?</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {wantsProof === null && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-16 text-base"
+                    onClick={() => setWantsProof(true)}
+                  >
+                    <Upload className="mr-2 h-5 w-5" />
+                    Sim
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-16 text-base"
+                    onClick={() => setWantsProof(false)}
+                  >
+                    Não
+                  </Button>
+                </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-base"
-                disabled={!selectedInstallment || paymentAmount <= 0 || uploading}
-              >
-                <Upload className="mr-2 h-5 w-5" />
-                {uploading ? 'Enviando...' : 'Enviar Comprovante'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              {wantsProof === true && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Input
+                      id="proof-file"
+                      type="file"
+                      accept={ALLOWED_FILE_TYPES.join(',')}
+                      onChange={handleFileChange}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      JPG, PNG, PDF (máx. 5MB)
+                    </p>
+                  </div>
+                  {file && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-700">
+                        {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
 
-        <Alert className="bg-blue-50 border-blue-200">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-700">
-            Após o envio, seu comprovante será analisado. Você receberá uma
-            notificação quando o pagamento for aprovado ou rejeitado.
-          </AlertDescription>
-        </Alert>
+              {wantsProof === false && (
+                <p className="text-sm text-gray-500 text-center py-2">
+                  Comprovante não será enviado.
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setWantsProof(null);
+                    setFile(null);
+                    setStep('amount');
+                  }}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={wantsProof === null || (wantsProof === true && !file)}
+                  onClick={handleSubmit}
+                >
+                  {uploading ? 'Enviando...' : 'Concluir'}
+                  {!uploading && <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'confirm' && submitted && (
+          <Card>
+            <CardHeader className="text-center">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+              <CardTitle>Pagamento Enviado!</CardTitle>
+              <CardDescription>Aguardando confirmação do vendedor</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Valor informado</span>
+                  <span className="font-bold">{formatBRL(paymentAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Data</span>
+                  <span className="text-sm">
+                    {format(new Date(paymentDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Status</span>
+                  <Badge className="bg-yellow-100 text-yellow-800">Aguardando confirmação</Badge>
+                </div>
+              </div>
+
+              <Button className="w-full" onClick={handleReset}>
+                Voltar ao resumo
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

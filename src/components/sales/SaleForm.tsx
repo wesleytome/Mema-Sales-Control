@@ -53,15 +53,29 @@ const baseSaleSchema = z.object({
   sale_price: z.number().min(0.01, 'Valor de venda deve ser maior que zero'),
   sale_date: z.date(),
   delivery_status: z.enum(['pending', 'sent', 'delivered']),
+  payment_mode: z.enum(['fixed', 'flexible']).default('fixed'),
   notes: z.string().optional(),
   installments: z.array(
     z.object({
       amount: z.number().min(0.01),
-      due_date: z.date(),
+      due_date: z.date().nullable(),
       installment_number: z.number(),
     })
-  ).min(1, 'Pelo menos uma parcela é obrigatória'),
-});
+  ),
+}).refine(
+  (data) => {
+    // Modo fixo: exige pelo menos 1 parcela
+    if (data.payment_mode === 'fixed') {
+      return data.installments.length >= 1;
+    }
+    // Modo flexível: parcelas são opcionais (será criada automaticamente)
+    return true;
+  },
+  {
+    message: 'Pelo menos uma parcela é obrigatória no modo fixo',
+    path: ['installments'],
+  }
+);
 
 
 type SaleFormData = z.infer<typeof baseSaleSchema>;
@@ -74,6 +88,7 @@ interface SaleFormProps {
 
 export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const isEditMode = !!sale;
+  const [paymentMode, setPaymentMode] = useState<'fixed' | 'flexible'>(sale?.payment_mode || 'fixed');
   const [parcelMode, setParcelMode] = useState<'auto' | 'manual'>('auto');
   const [numParcels, setNumParcels] = useState(1);
   const [showBuyerForm, setShowBuyerForm] = useState(false);
@@ -82,8 +97,9 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const updateSale = useUpdateSale();
   const createBuyer = useCreateBuyer();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<SaleFormData>({
-    resolver: zodResolver(baseSaleSchema),
+    resolver: zodResolver(baseSaleSchema) as any,
     defaultValues: {
       buyer_id: sale?.buyer_id || '',
       product_description: sale?.product_description || '',
@@ -91,10 +107,11 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       sale_price: sale?.sale_price || 0,
       sale_date: sale?.sale_date ? new Date(sale.sale_date) : new Date(),
       delivery_status: sale?.delivery_status || 'pending',
+      payment_mode: sale?.payment_mode || 'fixed',
       notes: sale?.notes || '',
       installments: sale?.installments?.map((inst) => ({
         amount: inst.amount,
-        due_date: new Date(inst.due_date),
+        due_date: inst.due_date ? new Date(inst.due_date) : null,
         installment_number: inst.installment_number,
       })) || [],
     },
@@ -152,13 +169,15 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         sale_price: sale.sale_price,
         sale_date: sale.sale_date ? new Date(sale.sale_date) : new Date(),
         delivery_status: sale.delivery_status,
+        payment_mode: sale.payment_mode || 'fixed',
         notes: sale.notes || '',
         installments: sale.installments?.map((inst) => ({
           amount: inst.amount,
-          due_date: new Date(inst.due_date),
+          due_date: inst.due_date ? new Date(inst.due_date) : null,
           installment_number: inst.installment_number,
         })) || [],
       });
+      setPaymentMode(sale.payment_mode || 'fixed');
     } else {
       form.reset({
         buyer_id: '',
@@ -167,9 +186,11 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         sale_price: 0,
         sale_date: new Date(),
         delivery_status: 'pending',
+        payment_mode: 'fixed',
         notes: '',
         installments: [],
       });
+      setPaymentMode('fixed');
     }
   }, [sale, form]);
 
@@ -327,7 +348,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const editingIndexRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
-  const handleInstallmentAmountChange = (index: number, _newAmount: number) => {
+  const handleInstallmentAmountChange = (index: number) => {
     // Atualiza apenas o valor da parcela atual sem recalcular
     // Marca que este campo está sendo editado
     editingIndexRef.current = index;
@@ -351,76 +372,99 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       
       if (!salePrice || salePrice <= 0) return;
       
-      // Calcula a soma das parcelas
-      const sumOfInstallments = currentInstallments.reduce(
-        (sum, inst) => sum + inst.amount,
-        0
-      );
+      // NOVA LÓGICA: Não altera parcelas anteriores, apenas posteriores
       
-      const difference = salePrice - sumOfInstallments;
+      // 1) Soma das parcelas ANTERIORES à alterada (não podem ser tocadas)
+      const previousInstallments = currentInstallments.slice(0, index);
+      const sumOfPrevious = previousInstallments.reduce((sum, inst) => sum + inst.amount, 0);
       
-      // Se não há diferença significativa, não precisa ajustar
-      if (Math.abs(difference) < 0.01) {
+      // 2) Valor da parcela alterada (mantém o que o usuário digitou)
+      const changedAmount = currentInstallments[index].amount;
+      
+      // 3) Saldo restante para as parcelas POSTERIORES
+      const remainingForNext = salePrice - sumOfPrevious - changedAmount;
+      
+      // 4) Parcelas POSTERIORES à alterada (serão recalculadas)
+      const nextInstallments = currentInstallments.slice(index + 1);
+      
+      // Validação: se não há saldo suficiente para as próximas parcelas
+      if (remainingForNext < 0) {
+        form.setError(`installments.${index}.amount`, {
+          type: 'manual',
+          message: `Valor excede o saldo disponível (máx: R$ ${(salePrice - sumOfPrevious).toFixed(2)})`,
+        });
         return;
       }
       
-      // Se a soma for maior que o total, reduz proporcionalmente das outras parcelas
-      if (sumOfInstallments > salePrice) {
-        const otherInstallments = currentInstallments.filter((_, i) => i !== index);
-        const sumOfOthers = otherInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-        
-        if (sumOfOthers > 0) {
-          // Reduz proporcionalmente das outras parcelas
-          const updatedInstallments = currentInstallments.map((inst, i) => {
-            if (i === index) return inst;
-            const proportion = inst.amount / sumOfOthers;
-            const reduction = difference * proportion;
-            return {
-              ...inst,
-              amount: Math.max(0.01, inst.amount + reduction), // difference é negativo
-            };
-          });
-          form.setValue('installments', updatedInstallments);
+      // Se não há parcelas posteriores, apenas valida se o total bate
+      if (nextInstallments.length === 0) {
+        const totalSum = sumOfPrevious + changedAmount;
+        if (Math.abs(totalSum - salePrice) < 0.01) {
+          // Tudo certo, não precisa ajustar nada
+          form.clearErrors(`installments.${index}.amount`);
+          return;
         } else {
-          // Se não há outras parcelas com valor, limita a parcela alterada ao total
-          const updatedInstallments = currentInstallments.map((inst, i) =>
-            i === index ? { ...inst, amount: salePrice } : inst
-          );
-          form.setValue('installments', updatedInstallments);
-        }
-      } else {
-        // Se a soma for menor, distribui a diferença proporcionalmente nas outras parcelas
-        const otherInstallments = currentInstallments.filter((_, i) => i !== index);
-        const sumOfOthers = otherInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-        
-        if (sumOfOthers > 0) {
-          // Distribui proporcionalmente nas outras parcelas
-          const updatedInstallments = currentInstallments.map((inst, i) => {
-            if (i === index) return inst;
-            const proportion = inst.amount / sumOfOthers;
-            const addition = difference * proportion;
-            return {
-              ...inst,
-              amount: inst.amount + addition,
-            };
+          // Última parcela e não bate o total
+          form.setError(`installments.${index}.amount`, {
+            type: 'manual',
+            message: `Valor deve totalizar R$ ${salePrice.toFixed(2)} (atual: R$ ${totalSum.toFixed(2)})`,
           });
-          form.setValue('installments', updatedInstallments);
-        } else {
-          // Se não há outras parcelas com valor, distribui igualmente
-          const otherCount = otherInstallments.length;
-          if (otherCount > 0) {
-            const amountPerOther = difference / otherCount;
-            const updatedInstallments = currentInstallments.map((inst, i) => {
-              if (i === index) return inst;
-              return {
-                ...inst,
-                amount: Math.max(0.01, inst.amount + amountPerOther),
-              };
-            });
-            form.setValue('installments', updatedInstallments);
-          }
+          return;
         }
       }
+      
+      // Se há parcelas posteriores mas o saldo é muito pequeno (< R$ 0.01 por parcela)
+      if (remainingForNext < nextInstallments.length * 0.01) {
+        form.setError(`installments.${index}.amount`, {
+          type: 'manual',
+          message: `Saldo insuficiente para ${nextInstallments.length} parcelas posteriores`,
+        });
+        return;
+      }
+      
+      // 5) Redistribuir o saldo entre as parcelas posteriores
+      // Estratégia: proporcional aos valores atuais (se possível), senão igualmente
+      const sumOfNext = nextInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+      
+      const updatedInstallments = [...currentInstallments];
+      
+      if (sumOfNext > 0.01) {
+        // Distribui proporcionalmente aos valores atuais
+        for (let i = index + 1; i < currentInstallments.length; i++) {
+          const proportion = currentInstallments[i].amount / sumOfNext;
+          const newAmount = remainingForNext * proportion;
+          updatedInstallments[i] = {
+            ...currentInstallments[i],
+            amount: Math.max(0.01, newAmount),
+          };
+        }
+      } else {
+        // Distribui igualmente entre as parcelas posteriores
+        const amountPerNext = remainingForNext / nextInstallments.length;
+        for (let i = index + 1; i < currentInstallments.length; i++) {
+          updatedInstallments[i] = {
+            ...currentInstallments[i],
+            amount: Math.max(0.01, amountPerNext),
+          };
+        }
+      }
+      
+      // Ajuste fino: garantir que a soma total seja exatamente o preço de venda
+      const finalSum = updatedInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+      const finalDiff = salePrice - finalSum;
+      
+      if (Math.abs(finalDiff) >= 0.01) {
+        // Ajusta a última parcela para compensar erros de arredondamento
+        const lastIndex = updatedInstallments.length - 1;
+        updatedInstallments[lastIndex] = {
+          ...updatedInstallments[lastIndex],
+          amount: Math.max(0.01, updatedInstallments[lastIndex].amount + finalDiff),
+        };
+      }
+      
+      // Limpa erros e atualiza
+      form.clearErrors(`installments.${index}.amount`);
+      form.setValue('installments', updatedInstallments);
     }, 100);
   };
 
@@ -482,6 +526,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           sale_price: data.sale_price,
           sale_date: format(data.sale_date, 'yyyy-MM-dd'),
           delivery_status: data.delivery_status,
+          payment_mode: data.payment_mode,
           notes: data.notes || null,
         });
 
@@ -523,7 +568,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
               .from('installments')
               .update({
                 amount: inst.amount,
-                due_date: format(inst.due_date, 'yyyy-MM-dd'),
+                due_date: inst.due_date ? format(inst.due_date, 'yyyy-MM-dd') : null,
                 installment_number: inst.installment_number,
                 // Preservar paid_amount e status
                 paid_amount: existingInst.paid_amount,
@@ -536,7 +581,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
             const { error } = await supabase.from('installments').insert({
               sale_id: sale.id,
               amount: inst.amount,
-              due_date: format(inst.due_date, 'yyyy-MM-dd'),
+              due_date: inst.due_date ? format(inst.due_date, 'yyyy-MM-dd') : null,
               status: 'pending',
               paid_amount: 0,
               installment_number: inst.installment_number,
@@ -553,6 +598,29 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           });
           return;
         }
+
+        // Preparar installments baseado no modo de pagamento
+        let installmentsData;
+        if (data.payment_mode === 'flexible') {
+          // Modo flexível: criar 1 installment virtual
+          installmentsData = [{
+            amount: data.sale_price,
+            due_date: format(data.sale_date, 'yyyy-MM-dd'),
+            status: 'pending' as const,
+            paid_amount: 0,
+            installment_number: 1,
+          }];
+        } else {
+          // Modo fixo: usar parcelas do formulário
+          installmentsData = data.installments.map((inst) => ({
+            amount: inst.amount,
+            due_date: inst.due_date ? format(inst.due_date, 'yyyy-MM-dd') : null,
+            status: 'pending' as const,
+            paid_amount: 0,
+            installment_number: inst.installment_number,
+          }));
+        }
+
         await createSale.mutateAsync({
           sale: {
             buyer_id: buyerId,
@@ -561,15 +629,10 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
             sale_price: data.sale_price,
             sale_date: format(data.sale_date, 'yyyy-MM-dd'),
             delivery_status: data.delivery_status,
+            payment_mode: data.payment_mode,
             notes: data.notes || null,
           },
-          installments: data.installments.map((inst) => ({
-            amount: inst.amount,
-            due_date: format(inst.due_date, 'yyyy-MM-dd'),
-            status: 'pending' as const,
-            paid_amount: 0,
-            installment_number: inst.installment_number,
-          })),
+          installments: installmentsData,
         });
       }
       onSuccess();
@@ -978,16 +1041,56 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           )}
         />
 
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Parcelas</h3>
-            <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold">Pagamento</h3>
+            <Tabs 
+              value={paymentMode} 
+              onValueChange={(v) => {
+                const mode = v as 'fixed' | 'flexible';
+                setPaymentMode(mode);
+                form.setValue('payment_mode', mode);
+                
+                if (mode === 'flexible') {
+                  // Limpar parcelas fixas e criar installment virtual
+                  form.setValue('installments', []);
+                }
+              }}
+            >
               <TabsList>
-                <TabsTrigger value="auto">Automático</TabsTrigger>
-                <TabsTrigger value="manual">Manual</TabsTrigger>
+                <TabsTrigger value="fixed">Parcelamento Fixo</TabsTrigger>
+                <TabsTrigger value="flexible">Pagamento Flexível</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
+
+          {paymentMode === 'flexible' ? (
+            <div className="border rounded-lg p-4 bg-blue-50">
+              <h4 className="font-semibold text-sm mb-2">Modo Flexível Ativo</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Cliente pagará valores variáveis em datas livres. Os pagamentos serão registrados após a criação da venda.
+              </p>
+              <div className="mt-3">
+                <span className="text-sm text-gray-700">Total a receber: </span>
+                <span className="text-lg font-bold">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(salePrice || 0)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-medium">Parcelas</h3>
+                <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
+                  <TabsList>
+                    <TabsTrigger value="auto">Automático</TabsTrigger>
+                    <TabsTrigger value="manual">Manual</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
 
           {parcelMode === 'auto' ? (
             <div className="space-y-4">
@@ -1054,9 +1157,9 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                             value={field.value}
                             onChange={(newValue) => {
                               field.onChange(newValue);
-                              handleInstallmentAmountChange(index, newValue);
+                              handleInstallmentAmountChange(index);
                             }}
-                            onBlur={(_e) => {
+                            onBlur={() => {
                               field.onBlur();
                               handleInstallmentAmountBlur(index);
                             }}
@@ -1094,7 +1197,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
-                              selected={field.value}
+                              selected={field.value || undefined}
                               onSelect={field.onChange}
                               initialFocus
                             />
@@ -1117,6 +1220,8 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
               </div>
             ))}
           </div>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

@@ -41,16 +41,18 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
       case 'last30days':
         startDate = subDays(now, 30);
         break;
-      case 'month':
+      case 'month': {
         const [year, month] = selectedMonth.split('-').map(Number);
         startDate = startOfMonth(new Date(year, month - 1));
         endDate = endOfMonth(new Date(year, month - 1));
         break;
-      case 'year':
+      }
+      case 'year': {
         const filterYear = parseInt(selectedYear);
         startDate = startOfYear(new Date(filterYear, 0));
         endDate = endOfYear(new Date(filterYear, 0));
         break;
+      }
       default:
         return sales;
     }
@@ -90,6 +92,7 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const totalOverdue = filteredInstallments?.reduce((sum, inst) => {
+      if (!inst.due_date) return sum; // Skip flexible payments
       const dueDate = new Date(inst.due_date);
       dueDate.setHours(0, 0, 0, 0);
       if (dueDate < today && inst.status !== 'paid') {
@@ -206,21 +209,6 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
     );
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Consolidado de Vendas</CardTitle>
-          <CardDescription>Carregando...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Gerar opções de meses e anos - apenas meses que tiveram vendas
   const monthOptions = useMemo(() => {
     if (!sales || sales.length === 0) {
       // Se não há vendas, mostrar apenas o mês atual
@@ -302,6 +290,20 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
         return 'Todos os períodos';
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Consolidado de Vendas</CardTitle>
+          <CardDescription>Carregando...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

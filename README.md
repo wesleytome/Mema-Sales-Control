@@ -13,15 +13,15 @@ Sistema completo para gestão de vendas parceladas com controle de compradores, 
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+ e pnpm
+- Docker e docker-compose
 - Conta no Supabase (gratuita)
 
-## 🛠️ Instalação
+## 🛠️ Instalação e execução (via Docker)
 
 1. Clone o repositório
-2. Instale as dependências:
+2. Suba os containers:
 ```bash
-pnpm install
+make up
 ```
 
 3. Configure o Supabase:

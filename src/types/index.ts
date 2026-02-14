@@ -3,6 +3,8 @@
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered';
 export type InstallmentStatus = 'pending' | 'paid' | 'late' | 'partial';
 export type PaymentStatus = 'pending' | 'approved' | 'rejected';
+export type PaymentOrigin = 'buyer' | 'seller';
+export type PaymentMode = 'fixed' | 'flexible';
 
 export interface Buyer {
   id: string;
@@ -29,6 +31,7 @@ export interface Sale {
   sale_price: number;
   sale_date: string;
   delivery_status: DeliveryStatus;
+  payment_mode: PaymentMode;
   notes: string | null;
   created_at: string;
   buyer?: Buyer;
@@ -39,7 +42,7 @@ export interface Installment {
   sale_id: string;
   amount: number;
   paid_amount: number;
-  due_date: string;
+  due_date: string | null;
   status: InstallmentStatus;
   installment_number: number;
   created_at: string;
@@ -52,6 +55,8 @@ export interface Payment {
   amount: number;
   proof_url: string | null;
   status: PaymentStatus;
+  origin: PaymentOrigin;
+  payment_date: string | null;
   rejection_reason: string | null;
   created_at: string;
   installment?: Installment;

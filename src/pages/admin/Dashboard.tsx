@@ -45,12 +45,13 @@ export function Dashboard() {
 
   // Parcelas vencendo hoje
   const dueToday = allInstallments?.filter(
-    (inst) => isToday(new Date(inst.due_date)) && inst.status !== 'paid'
+    (inst) => inst.due_date && isToday(new Date(inst.due_date)) && inst.status !== 'paid'
   ) || [];
 
   // Parcelas vencendo em 3 dias
   const dueIn3Days = allInstallments?.filter(
     (inst) => {
+      if (!inst.due_date) return false;
       const dueDate = new Date(inst.due_date);
       return (
         isAfter(dueDate, today) &&
@@ -62,6 +63,7 @@ export function Dashboard() {
 
   // Parcelas atrasadas
   const overdue = (allInstallments || []).filter((inst) => {
+    if (!inst.due_date) return false;
     const dueDate = new Date(inst.due_date);
     dueDate.setHours(0, 0, 0, 0); // Resetar horas para comparar apenas datas
     return dueDate < today && inst.status !== 'paid';
@@ -71,20 +73,21 @@ export function Dashboard() {
   // Próximos recebimentos (ordenado por data) - inclui atrasados também
   const upcomingPayments = (allInstallments || [])
     .filter((inst) => {
+      if (!inst.due_date) return false;
       const dueDate = new Date(inst.due_date);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate >= today && inst.status !== 'paid';
     })
     .sort((a, b) => {
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
     });
 
   // Todas as parcelas pendentes (ordenado: atrasados primeiro, depois por data)
   const allPendingPayments = (allInstallments || [])
-    .filter((inst) => inst.status !== 'paid')
+    .filter((inst) => inst.status !== 'paid' && inst.due_date)
     .sort((a, b) => {
-      const aDate = new Date(a.due_date);
-      const bDate = new Date(b.due_date);
+      const aDate = new Date(a.due_date!);
+      const bDate = new Date(b.due_date!);
       aDate.setHours(0, 0, 0, 0);
       bDate.setHours(0, 0, 0, 0);
       
@@ -104,6 +107,8 @@ export function Dashboard() {
 
   // Renderiza item de parcela
   const renderPaymentItem = (inst: any) => {
+    if (!inst.due_date) return null; // Skip flexible payments sem due_date
+    
     const dueDate = new Date(inst.due_date);
     dueDate.setHours(0, 0, 0, 0);
     const daysUntilDue = differenceInDays(dueDate, today);

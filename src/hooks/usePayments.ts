@@ -61,11 +61,34 @@ export function usePayment(id: string) {
   });
 }
 
+export function usePaymentsBySale(saleId: string) {
+  return useQuery({
+    queryKey: ['payments', 'sale', saleId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          installment:installments!inner(
+            *,
+            sale:sales(*)
+          )
+        `)
+        .eq('installment.sale_id', saleId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Payment[];
+    },
+    enabled: !!saleId,
+  });
+}
+
 export function useCreatePayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payment: Omit<Payment, 'id' | 'created_at' | 'installment'>) => {
+    mutationFn: async (payment: Omit<Payment, 'id' | 'created_at' | 'installment'> & { origin?: string }) => {
       const { data, error } = await supabase
         .from('payments')
         .insert(payment)
