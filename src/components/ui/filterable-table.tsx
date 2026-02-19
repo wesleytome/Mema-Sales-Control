@@ -123,7 +123,7 @@ export function FilterableTable<T extends Record<string, any>>({
           {/* Busca e controles mobile */}
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
                 value={searchTerm}
@@ -131,7 +131,7 @@ export function FilterableTable<T extends Record<string, any>>({
                 className="pl-9 h-11 text-base"
               />
             </div>
-            
+
             {/* Filtros e toggle mobile */}
             <div className="flex gap-2 items-center flex-wrap">
               {/* Filtros mobile */}
@@ -173,7 +173,7 @@ export function FilterableTable<T extends Record<string, any>>({
                     ))}
                 </>
               )}
-              
+
               {/* Toggle de visualização mobile */}
               <div className="flex items-center border rounded-md ml-auto">
                 <Button
@@ -194,7 +194,7 @@ export function FilterableTable<T extends Record<string, any>>({
                 </Button>
               </div>
             </div>
-            
+
             {hasActiveFilters && (
               <Button
                 variant="outline"
@@ -207,8 +207,8 @@ export function FilterableTable<T extends Record<string, any>>({
               </Button>
             )}
           </div>
-          
-          <div className="text-center text-gray-500 py-12 px-4">{emptyMessage}</div>
+
+          <div className="text-center text-muted-foreground py-12 px-4">{emptyMessage}</div>
         </div>
       );
     }
@@ -226,7 +226,7 @@ export function FilterableTable<T extends Record<string, any>>({
               className="pl-9 h-11 text-base"
             />
           </div>
-          
+
           {/* Filtros e toggle mobile */}
           <div className="flex gap-2 items-center flex-wrap">
             {/* Filtros mobile */}
@@ -268,7 +268,7 @@ export function FilterableTable<T extends Record<string, any>>({
                   ))}
               </>
             )}
-            
+
             {/* Toggle de visualização mobile */}
             <div className="flex items-center border rounded-md ml-auto">
               <Button
@@ -289,7 +289,7 @@ export function FilterableTable<T extends Record<string, any>>({
               </Button>
             </div>
           </div>
-          
+
           {hasActiveFilters && (
             <Button
               variant="outline"
@@ -310,16 +310,16 @@ export function FilterableTable<T extends Record<string, any>>({
             {filteredData.map((row) => (
               <div
                 key={keyExtractor(row)}
-                className="border rounded-lg p-4 bg-white shadow-sm"
+                className="border border-border/70 rounded-2xl p-4 bg-card elevation-1 hover-lift"
               >
                 <div className="space-y-2">
                   {mobileCardTitle && (
-                    <div className="font-semibold text-base text-gray-900">
+                    <div className="font-semibold text-base text-foreground">
                       {mobileCardTitle(row)}
                     </div>
                   )}
                   {mobileCardSubtitle && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       {mobileCardSubtitle(row)}
                     </div>
                   )}
@@ -344,10 +344,10 @@ export function FilterableTable<T extends Record<string, any>>({
 
                         return (
                           <div key={index} className="flex justify-between items-start gap-2">
-                            <span className="text-xs font-medium text-gray-500">
+                            <span className="text-xs font-medium text-muted-foreground/80">
                               {column.header}:
                             </span>
-                            <span className="text-sm text-gray-900 text-right flex-1">
+                            <span className="text-sm text-foreground text-right flex-1">
                               {value}
                             </span>
                           </div>
@@ -366,7 +366,7 @@ export function FilterableTable<T extends Record<string, any>>({
         ) : (
           /* Lista mobile - tabela */
           filteredData.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">{emptyMessage}</div>
+            <div className="text-center text-muted-foreground py-12">{emptyMessage}</div>
           ) : (
             <div className="rounded-md border overflow-x-auto">
               <Table>
@@ -423,7 +423,7 @@ export function FilterableTable<T extends Record<string, any>>({
               className="pl-9"
             />
           </div>
-          
+
           {/* Filtros ao lado da busca */}
           {columns.some((col) => col.filterable && col.filterType === 'select') && (
             <>
@@ -463,7 +463,7 @@ export function FilterableTable<T extends Record<string, any>>({
                 ))}
             </>
           )}
-          
+
           {hasActiveFilters && (
             <Button variant="outline" size="sm" onClick={clearFilters}>
               <X className="mr-2 h-4 w-4" />

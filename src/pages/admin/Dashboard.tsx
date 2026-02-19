@@ -1,4 +1,4 @@
-// Dashboard operacional - Mobile First
+// Dashboard operacional — Mobile First
 import { useSales } from '@/hooks/useSales';
 import { useInstallments } from '@/hooks/useInstallments';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { SalesChartCard } from '@/components/ui/sales-chart-card';
 import { DeliveriesChartCard } from '@/components/ui/deliveries-chart-card';
 import { SalesSummaryCard } from '@/components/ui/sales-summary-card';
-import { AlertCircle, DollarSign, TrendingUp, Bell, ArrowRight } from 'lucide-react';
+import { AlertCircle, DollarSign, TrendingUp, Bell, ArrowRight, CalendarDays } from 'lucide-react';
 import { format, isToday, isAfter, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,10 @@ import { Link } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
+
+const formatBRL = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export function Dashboard() {
   const { data: sales, isLoading: salesLoading } = useSales();
@@ -26,51 +30,47 @@ export function Dashboard() {
   if (salesLoading || installmentsLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
-        <Skeleton className="h-32 w-full" />
+        <div className="space-y-1">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
         <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Resetar horas para comparar apenas datas
+  today.setHours(0, 0, 0, 0);
   const threeDaysFromNow = addDays(today, 3);
 
-  // Calcular totais
   const totalSold = sales?.reduce((sum, sale) => sum + sale.sale_price, 0) || 0;
   const totalProfit = sales?.reduce((sum, sale) => {
     const profit = sale.purchase_price ? sale.sale_price - sale.purchase_price : 0;
     return sum + profit;
   }, 0) || 0;
 
-  // Parcelas vencendo hoje
   const dueToday = allInstallments?.filter(
-    (inst) => inst.due_date && isToday(new Date(inst.due_date)) && inst.status !== 'paid'
+    (inst) => inst.due_date && isToday(new Date(inst.due_date)) && inst.status !== 'paid',
   ) || [];
 
-  // Parcelas vencendo em 3 dias
-  const dueIn3Days = allInstallments?.filter(
-    (inst) => {
-      if (!inst.due_date) return false;
-      const dueDate = new Date(inst.due_date);
-      return (
-        isAfter(dueDate, today) &&
-        dueDate <= threeDaysFromNow &&
-        inst.status !== 'paid'
-      );
-    }
-  ) || [];
+  const dueIn3Days = allInstallments?.filter((inst) => {
+    if (!inst.due_date) return false;
+    const dueDate = new Date(inst.due_date);
+    return isAfter(dueDate, today) && dueDate <= threeDaysFromNow && inst.status !== 'paid';
+  }) || [];
 
-  // Parcelas atrasadas
   const overdue = (allInstallments || []).filter((inst) => {
     if (!inst.due_date) return false;
     const dueDate = new Date(inst.due_date);
-    dueDate.setHours(0, 0, 0, 0); // Resetar horas para comparar apenas datas
+    dueDate.setHours(0, 0, 0, 0);
     return dueDate < today && inst.status !== 'paid';
   });
 
-
-  // Próximos recebimentos (ordenado por data) - inclui atrasados também
   const upcomingPayments = (allInstallments || [])
     .filter((inst) => {
       if (!inst.due_date) return false;
@@ -78,11 +78,8 @@ export function Dashboard() {
       dueDate.setHours(0, 0, 0, 0);
       return dueDate >= today && inst.status !== 'paid';
     })
-    .sort((a, b) => {
-      return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
-    });
+    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
 
-  // Todas as parcelas pendentes (ordenado: atrasados primeiro, depois por data)
   const allPendingPayments = (allInstallments || [])
     .filter((inst) => inst.status !== 'paid' && inst.due_date)
     .sort((a, b) => {
@@ -90,222 +87,205 @@ export function Dashboard() {
       const bDate = new Date(b.due_date!);
       aDate.setHours(0, 0, 0, 0);
       bDate.setHours(0, 0, 0, 0);
-      
-      // Atrasados primeiro
       const aIsOverdue = aDate < today;
       const bIsOverdue = bDate < today;
-      
       if (aIsOverdue && !bIsOverdue) return -1;
       if (!aIsOverdue && bIsOverdue) return 1;
-      
-      // Depois ordena por data
       return aDate.getTime() - bDate.getTime();
     });
 
-  // Últimas vendas
   const recentSales = sales?.slice(0, 5) || [];
 
-  // Renderiza item de parcela
   const renderPaymentItem = (inst: any) => {
-    if (!inst.due_date) return null; // Skip flexible payments sem due_date
-    
+    if (!inst.due_date) return null;
     const dueDate = new Date(inst.due_date);
     dueDate.setHours(0, 0, 0, 0);
     const daysUntilDue = differenceInDays(dueDate, today);
     const isOverdue = dueDate < today;
     const remainingAmount = inst.amount - inst.paid_amount;
-    
+
     return (
-      <div key={inst.id} className="flex items-center justify-between py-3 border-b last:border-0">
+      <div
+        key={inst.id}
+        className={cn(
+          'flex items-center justify-between py-3 border-b last:border-0 transition-colors',
+          isOverdue && 'bg-rose-500/10 dark:bg-rose-500/15 -mx-2 px-2 rounded-lg',
+        )}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-medium ${isOverdue ? 'text-red-600' : ''}`}>
+            <span className={cn('text-sm font-semibold', isOverdue ? 'text-rose-600' : 'text-foreground')}>
               {format(dueDate, 'dd/MM', { locale: ptBR })}
             </span>
             {isOverdue ? (
-              <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-medium">
-                Atrasado
-              </span>
+              <span className="status-danger text-xs px-2 py-0.5 rounded-full font-medium">Atrasado</span>
             ) : daysUntilDue <= 3 && daysUntilDue >= 0 ? (
-              <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+              <span className="status-warning text-xs px-2 py-0.5 rounded-full">
                 {daysUntilDue === 0 ? 'Hoje' : `${daysUntilDue}d`}
               </span>
             ) : null}
           </div>
-          <p className="text-xs text-gray-500 truncate">
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
             {inst.sale?.product_description || 'Produto'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="text-right">
-            <span className={`text-sm font-bold block ${isOverdue ? 'text-red-600' : ''}`}>
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              }).format(remainingAmount)}
+            <span className={cn('text-sm font-bold block', isOverdue ? 'text-rose-600' : 'text-foreground')}>
+              {formatBRL(remainingAmount)}
             </span>
             {inst.paid_amount > 0 && (
-              <span className="text-xs text-gray-400">
-                de {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(inst.amount)}
-              </span>
+              <span className="text-xs text-muted-foreground">de {formatBRL(inst.amount)}</span>
             )}
           </div>
           <Badge
-            className={`text-xs shrink-0 ${
+            className={cn(
+              'text-xs shrink-0 border-0 font-medium',
               inst.status === 'paid'
-                ? 'bg-green-100 text-green-800'
+                ? 'status-success'
                 : inst.status === 'late' || isOverdue
-                ? 'bg-red-100 text-red-800'
-                : inst.status === 'partial'
-                ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-gray-100 text-gray-800'
-            }`}
+                  ? 'status-danger'
+                  : inst.status === 'partial'
+                    ? 'status-warning'
+                    : 'status-neutral',
+            )}
           >
-            {inst.status === 'paid' ? 'Pago' : inst.status === 'late' || isOverdue ? 'Atrasado' : 'Pendente'}
+            {inst.status === 'paid'
+              ? 'Pago'
+              : inst.status === 'late' || isOverdue
+                ? 'Atrasado'
+                : 'Pendente'}
           </Badge>
         </div>
       </div>
     );
   };
 
-  // Renderiza item de venda para mobile
   const renderSaleItem = (sale: any) => (
     <Link
       key={sale.id}
       to={`/vendas/${sale.id}`}
-      className="flex items-center justify-between py-3 border-b last:border-0 hover:bg-gray-50 -mx-2 px-2 rounded"
+      className="flex items-center justify-between py-3 border-b last:border-0 hover:bg-accent/50 -mx-2 px-2 rounded-lg transition-colors"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{sale.product_description}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-sm font-semibold truncate">{sale.product_description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           {format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR })}
+          {sale.buyer?.name && ` • ${sale.buyer.name}`}
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-bold text-green-600">
-          {new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-          }).format(sale.sale_price)}
-        </span>
-        <ArrowRight className="h-4 w-4 text-gray-400" />
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="text-sm font-bold text-emerald-600">{formatBRL(sale.sale_price)}</span>
+        <ArrowRight className="h-4 w-4 text-muted-foreground" />
       </div>
     </Link>
   );
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Visão geral da operação</p>
+    <div className="space-y-5 sm:space-y-6">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </p>
+        </div>
       </div>
 
-      {/* Card principal de consolidado */}
+      {/* Summary card */}
       <SalesSummaryCard
         sales={sales || []}
         installments={allInstallments || []}
         isLoading={salesLoading || installmentsLoading}
       />
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-            <CardTitle className="text-xs sm:text-sm font-medium">Total Vendido</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-            <div className="text-lg sm:text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              }).format(totalSold)}
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+        {/* Total Vendido */}
+        <Card className="elevation-1 border-border/70">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-medium text-muted-foreground leading-tight">Total Vendido</p>
+              <div className="icon-chip bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 !w-7 !h-7 !rounded-lg shrink-0">
+                <DollarSign className="h-3.5 w-3.5" />
+              </div>
             </div>
+            <p className="text-base sm:text-xl font-bold leading-tight break-all">{formatBRL(totalSold)}</p>
           </CardContent>
         </Card>
 
+        {/* Lucro */}
         {totalProfit > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium">Lucro Total</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-lg sm:text-2xl font-bold text-green-600">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(totalProfit)}
+          <Card className="elevation-1 border-border/70">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-xs font-medium text-muted-foreground leading-tight">Lucro Total</p>
+                <div className="icon-chip bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 !w-7 !h-7 !rounded-lg shrink-0">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </div>
               </div>
+              <p className="text-base sm:text-xl font-bold leading-tight text-emerald-600 break-all">
+                {formatBRL(totalProfit)}
+              </p>
               {totalSold > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Margem: {((totalProfit / totalSold) * 100).toFixed(1)}%
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {((totalProfit / totalSold) * 100).toFixed(1)}% margem
                 </p>
               )}
             </CardContent>
           </Card>
         )}
 
-        <Card className={overdue.length > 0 ? 'border-red-200 bg-red-50/50' : ''}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-            <CardTitle className="text-xs sm:text-sm font-medium">Atrasadas</CardTitle>
-            <Bell className={`h-4 w-4 ${overdue.length > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-            <div className={`text-lg sm:text-2xl font-bold ${overdue.length > 0 ? 'text-red-600' : ''}`}>
-              {overdue.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Parcelas</p>
-            {overdue.length > 0 && (
-              <div className="mt-1">
-                <p className={`text-xs sm:text-sm font-semibold ${overdue.length > 0 ? 'text-red-600' : ''}`}>
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(
-                    overdue.reduce((sum, inst) => sum + (inst.amount - inst.paid_amount), 0)
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">Total pendente</p>
+        {/* Atrasadas */}
+        <Card className={cn('elevation-1', overdue.length > 0 ? 'border-rose-200 bg-rose-50/30 dark:bg-rose-950/20 dark:border-rose-900/40' : 'border-border/70')}>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-medium text-muted-foreground leading-tight">Atrasadas</p>
+              <div className={cn('icon-chip !w-7 !h-7 !rounded-lg shrink-0', overdue.length > 0 ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40' : 'bg-muted text-muted-foreground')}>
+                <Bell className="h-3.5 w-3.5" />
               </div>
+            </div>
+            <p className={cn('text-base sm:text-xl font-bold leading-tight', overdue.length > 0 ? 'text-rose-600' : '')}>
+              {overdue.length}
+              <span className="text-xs font-normal text-muted-foreground ml-1">parcelas</span>
+            </p>
+            {overdue.length > 0 && (
+              <p className="text-xs font-semibold text-rose-600 mt-0.5 break-all">
+                {formatBRL(overdue.reduce((sum, inst) => sum + (inst.amount - inst.paid_amount), 0))}
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Cards de gráficos */}
+      {/* Charts */}
       <div className={isMobile ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'}>
-        <SalesChartCard 
-          sales={sales || []} 
+        <SalesChartCard
+          sales={sales || []}
           installments={allInstallments || []}
-          isLoading={salesLoading || installmentsLoading} 
+          isLoading={salesLoading || installmentsLoading}
         />
-        <DeliveriesChartCard 
-          sales={sales || []} 
-          isLoading={salesLoading} 
-        />
+        <DeliveriesChartCard sales={sales || []} isLoading={salesLoading} />
       </div>
 
-      {/* Alertas de parcelas - integrado ao card de recebimentos */}
+      {/* Alerts */}
       {(dueToday.length > 0 || dueIn3Days.length > 0) && overdue.length === 0 && (
         <div className="space-y-2">
           {dueToday.length > 0 && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-sm font-medium text-orange-800">Vencendo Hoje</AlertTitle>
-              <AlertDescription className="text-sm text-orange-700">
+            <Alert className="border-amber-200/70 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-sm font-semibold text-amber-800">Vencendo Hoje</AlertTitle>
+              <AlertDescription className="text-sm text-amber-700">
                 {dueToday.length} parcela(s) vence(m) hoje.
               </AlertDescription>
             </Alert>
           )}
-
           {dueIn3Days.length > 0 && (
-            <Alert className="border-yellow-200 bg-yellow-50">
+            <Alert className="border-yellow-200/70 bg-yellow-50">
               <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-sm font-medium text-yellow-800">Vencendo em Breve</AlertTitle>
+              <AlertTitle className="text-sm font-semibold text-yellow-800">Vencendo em Breve</AlertTitle>
               <AlertDescription className="text-sm text-yellow-700">
                 {dueIn3Days.length} parcela(s) vence(m) nos próximos 3 dias.
               </AlertDescription>
@@ -314,30 +294,25 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Recebimentos + Últimas Vendas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Recebimentos - Card unificado com filtros */}
-        <Card className={overdue.length > 0 ? 'border-red-200' : ''}>
+        {/* Recebimentos */}
+        <Card className={cn('elevation-1', overdue.length > 0 ? 'border-rose-200' : 'border-border/70')}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
                   Recebimentos
                   {overdue.length > 0 && (
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge className="status-danger border-0 text-xs font-semibold">
                       {overdue.length} atrasadas
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-sm mt-1">
+                <CardDescription className="text-xs mt-1">
                   {overdue.length > 0 && (
-                    <span className="text-red-600 font-medium">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(
-                        overdue.reduce((sum, inst) => sum + (inst.amount - inst.paid_amount), 0)
-                      )}{' '}
-                      em atraso •{' '}
+                    <span className="text-rose-600 font-medium">
+                      {formatBRL(overdue.reduce((sum, inst) => sum + (inst.amount - inst.paid_amount), 0))} em atraso •{' '}
                     </span>
                   )}
                   Gerencie seus recebimentos pendentes
@@ -351,25 +326,19 @@ export function Dashboard() {
                 <TabsTrigger value="overdue" className="text-xs sm:text-sm">
                   Atrasados
                   {overdue.length > 0 && (
-                    <Badge variant="destructive" className="ml-1 text-xs">
-                      {overdue.length}
-                    </Badge>
+                    <Badge className="ml-1 status-danger border-0 text-xs">{overdue.length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="upcoming" className="text-xs sm:text-sm">
                   Próximos
                   {upcomingPayments.length > 0 && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({upcomingPayments.length})
-                    </span>
+                    <span className="ml-1 text-xs text-muted-foreground">({upcomingPayments.length})</span>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="all" className="text-xs sm:text-sm">
                   Todos
                   {allPendingPayments.length > 0 && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({allPendingPayments.length})
-                    </span>
+                    <span className="ml-1 text-xs text-muted-foreground">({allPendingPayments.length})</span>
                   )}
                 </TabsTrigger>
               </TabsList>
@@ -377,9 +346,7 @@ export function Dashboard() {
               <TabsContent value="overdue" className="mt-0">
                 {overdue.length > 0 ? (
                   <>
-                    <div className="divide-y">
-                      {overdue.slice(0, 5).map(renderPaymentItem)}
-                    </div>
+                    <div className="divide-y">{overdue.slice(0, 5).map(renderPaymentItem)}</div>
                     {overdue.length > 5 && (
                       <div className="mt-4">
                         <Button variant="outline" asChild className="w-full">
@@ -392,8 +359,8 @@ export function Dashboard() {
                     )}
                   </>
                 ) : (
-                  <p className="text-center text-gray-500 py-4 text-sm">
-                    Nenhum recebimento atrasado
+                  <p className="text-center text-muted-foreground py-8 text-sm">
+                    Nenhum recebimento atrasado ✓
                   </p>
                 )}
               </TabsContent>
@@ -401,9 +368,7 @@ export function Dashboard() {
               <TabsContent value="upcoming" className="mt-0">
                 {upcomingPayments.length > 0 ? (
                   <>
-                    <div className="divide-y">
-                      {upcomingPayments.slice(0, 5).map(renderPaymentItem)}
-                    </div>
+                    <div className="divide-y">{upcomingPayments.slice(0, 5).map(renderPaymentItem)}</div>
                     {upcomingPayments.length > 5 && (
                       <div className="mt-4">
                         <Button variant="outline" asChild className="w-full">
@@ -416,7 +381,7 @@ export function Dashboard() {
                     )}
                   </>
                 ) : (
-                  <p className="text-center text-gray-500 py-4 text-sm">
+                  <p className="text-center text-muted-foreground py-8 text-sm">
                     Nenhum recebimento próximo
                   </p>
                 )}
@@ -425,9 +390,7 @@ export function Dashboard() {
               <TabsContent value="all" className="mt-0">
                 {allPendingPayments.length > 0 ? (
                   <>
-                    <div className="divide-y">
-                      {allPendingPayments.slice(0, 5).map(renderPaymentItem)}
-                    </div>
+                    <div className="divide-y">{allPendingPayments.slice(0, 5).map(renderPaymentItem)}</div>
                     {allPendingPayments.length > 5 && (
                       <div className="mt-4">
                         <Button variant="outline" asChild className="w-full">
@@ -440,7 +403,7 @@ export function Dashboard() {
                     )}
                   </>
                 ) : (
-                  <p className="text-center text-gray-500 py-4 text-sm">
+                  <p className="text-center text-muted-foreground py-8 text-sm">
                     Nenhum recebimento pendente
                   </p>
                 )}
@@ -449,11 +412,13 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Últimas vendas */}
-        <Card>
+        {/* Últimas Vendas */}
+        <Card className="elevation-1 border-border/70">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Últimas Vendas</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">As {isMobile ? 3 : 5} vendas mais recentes</CardDescription>
+            <CardTitle className="text-base font-semibold">Últimas Vendas</CardTitle>
+            <CardDescription className="text-xs">
+              As {isMobile ? 3 : 5} vendas mais recentes
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {recentSales.length > 0 ? (
@@ -461,7 +426,9 @@ export function Dashboard() {
                 {recentSales.slice(0, isMobile ? 3 : 5).map(renderSaleItem)}
               </div>
             ) : (
-              <p className="text-center text-gray-500 py-4 text-sm">Nenhuma venda cadastrada</p>
+              <p className="text-center text-muted-foreground py-8 text-sm">
+                Nenhuma venda cadastrada
+              </p>
             )}
             <div className="mt-4">
               <Button variant="outline" asChild className="w-full">

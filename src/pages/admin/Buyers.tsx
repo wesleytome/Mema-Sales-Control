@@ -14,7 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Buyer } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -231,11 +231,16 @@ export function Buyers() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Compradores</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Gerencie seus compradores</p>
+        <div className="flex items-start gap-3">
+          <div className="icon-chip bg-violet-100 text-violet-600 dark:bg-violet-900/40 mt-0.5 hidden sm:flex">
+            <Users className="h-4 w-4" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Compradores</h1>
+            <p className="text-sm text-muted-foreground mt-1">Gerencie seus compradores</p>
+          </div>
         </div>
         <ResponsiveDialog
           open={isDialogOpen}
@@ -254,217 +259,217 @@ export function Buyers() {
           }
           className="space-y-6"
         >
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Nome *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Nome completo" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="cpf"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>CPF</FormLabel>
-                      <FormControl>
-                        <CPFInput
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          validate={true}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" placeholder="email@exemplo.com" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Nome completo" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <PhoneInput
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <CPFInput
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        validate={true}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="email@exemplo.com" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <Separator className="my-4" />
+              <Separator className="my-4" />
 
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-gray-900">Dados de Endereço</h3>
-                  <p className="text-xs text-gray-500">Preencha os dados de endereço do comprador</p>
-                </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">Dados de Endereço</h3>
+                <p className="text-xs text-muted-foreground">Preencha os dados de endereço do comprador</p>
+              </div>
 
+              <FormField
+                control={form.control}
+                name="cep"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>CEP</FormLabel>
+                    <FormControl>
+                      <CEPInput
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        onAddressFound={handleAddressFound}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="cep"
+                  name="address"
                   render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>CEP</FormLabel>
+                    <FormItem className="space-y-2 sm:col-span-2">
+                      <FormLabel>Logradouro</FormLabel>
                       <FormControl>
-                        <CEPInput
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          onAddressFound={handleAddressFound}
-                        />
+                        <Input {...field} placeholder="Rua, Avenida, etc." />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="address_number"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Número</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="123" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2 sm:col-span-2">
-                        <FormLabel>Logradouro</FormLabel>
+              <FormField
+                control={form.control}
+                name="address_complement"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Complemento</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Apto, Bloco, Sala, etc." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="neighborhood"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Bairro</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Nome do bairro" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Cidade</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome da cidade" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Estado (UF)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
-                          <Input {...field} placeholder="Rua, Avenida, etc." />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o estado" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="address_number"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Número</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="123" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="address_complement"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Complemento</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Apto, Bloco, Sala, etc." />
-                      </FormControl>
+                        <SelectContent>
+                          {BRAZILIAN_STATES.map((state) => (
+                            <SelectItem key={state.value} value={state.value}>
+                              {state.label} ({state.value})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="neighborhood"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Bairro</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Nome do bairro" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="address_reference"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Referência</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ponto de referência para entregas" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Cidade</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Nome da cidade" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Estado (UF)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o estado" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {BRAZILIAN_STATES.map((state) => (
-                              <SelectItem key={state.value} value={state.value}>
-                                {state.label} ({state.value})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="address_reference"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Referência</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ponto de referência para entregas" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={handleCloseDialog}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={createBuyer.isPending || updateBuyer.isPending}>
-                    {editingBuyer ? 'Salvar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={createBuyer.isPending || updateBuyer.isPending}>
+                  {editingBuyer ? 'Salvar' : 'Criar'}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </ResponsiveDialog>
       </div>
 
@@ -515,22 +520,25 @@ export function Buyers() {
           mobileCardSubtitle={() => null}
           actions={(buyer) => (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="default" size="sm" asChild>
                 <Link to={`/compradores/${buyer.id}`}>
                   <Eye className="h-4 w-4" />
+                  Visualizar
                 </Link>
               </Button>
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
                 onClick={() => handleOpenDialog(buyer)}
               >
                 <Pencil className="h-4 w-4" />
+                Editar
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 text-white" />
+                    Excluir
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

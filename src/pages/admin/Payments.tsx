@@ -2,12 +2,12 @@
 import { useState } from 'react';
 import { usePayments, useUpdatePayment } from '@/hooks/usePayments';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { FilterableTable, type FilterableColumn } from '@/components/ui/filterable-table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Check, X, Eye } from 'lucide-react';
+import { Check, X, Eye, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,12 +55,17 @@ export function Payments() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Pagamentos</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">
-          Aprove ou rejeite comprovantes de pagamento
-        </p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="icon-chip bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 mt-0.5 hidden sm:flex">
+            <CreditCard className="h-4 w-4" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pagamentos</h1>
+            <p className="text-sm text-muted-foreground mt-1">Aprove ou rejeite pagamentos pendentes</p>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
@@ -116,19 +121,23 @@ export function Payments() {
             {
               id: 'status',
               header: 'Status',
-              accessor: (payment: Payment) => (
-                <Badge
-                  className={
-                    payment.status === 'approved'
-                      ? 'bg-green-100 text-green-800'
-                      : payment.status === 'rejected'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }
-                >
-                  {PAYMENT_STATUS_OPTIONS.find((opt) => opt.value === payment.status)?.label}
-                </Badge>
-              ),
+              accessor: (p: Payment) => {
+                const statusMap: Record<string, string> = {
+                  pending: 'status-warning',
+                  approved: 'status-success',
+                  rejected: 'status-danger',
+                };
+                const labelMap: Record<string, string> = {
+                  pending: 'Pendente',
+                  approved: 'Aprovado',
+                  rejected: 'Rejeitado',
+                };
+                return (
+                  <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium', statusMap[p.status] ?? 'status-neutral')}>
+                    {labelMap[p.status] ?? p.status}
+                  </span>
+                );
+              },
               filterable: true,
               filterType: 'select',
               filterOptions: PAYMENT_STATUS_OPTIONS.map((opt) => ({
@@ -177,6 +186,7 @@ export function Payments() {
                     disabled={updatePayment.isPending}
                   >
                     <Check className="h-4 w-4 text-green-600" />
+                    Confirmar Recebimento
                   </Button>
                   <Button
                     variant="ghost"
@@ -185,6 +195,7 @@ export function Payments() {
                     disabled={updatePayment.isPending}
                   >
                     <X className="h-4 w-4 text-red-600" />
+                    Não Recebi
                   </Button>
                 </>
               ) : null}

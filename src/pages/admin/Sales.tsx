@@ -5,7 +5,8 @@ import { useSales, useDeleteSale } from '@/hooks/useSales';
 import { Button } from '@/components/ui/button';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { FilterableTable, type FilterableColumn } from '@/components/ui/filterable-table';
-import { Plus, Trash2, Eye, Pencil } from 'lucide-react';
+import { Plus, Trash2, Eye, Pencil, ShoppingCart } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DELIVERY_STATUS_OPTIONS } from '@/lib/constants';
 import { format } from 'date-fns';
@@ -39,11 +40,16 @@ export function Sales() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Vendas</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Gerencie suas vendas e parcelas</p>
+        <div className="flex items-start gap-3">
+          <div className="icon-chip bg-blue-100 text-blue-600 dark:bg-blue-900/40 mt-0.5 hidden sm:flex">
+            <ShoppingCart className="h-4 w-4" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Vendas</h1>
+            <p className="text-sm text-muted-foreground mt-1">Gerencie suas vendas e parcelas</p>
+          </div>
         </div>
         <ResponsiveDialog
           open={isDialogOpen}
@@ -115,9 +121,9 @@ export function Sales() {
               accessor: (sale: Sale) =>
                 sale.purchase_price
                   ? new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    }).format(sale.purchase_price)
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(sale.purchase_price)
                   : '-',
               filterable: false,
               defaultVisible: false,
@@ -145,13 +151,14 @@ export function Sales() {
               header: 'Status',
               accessor: (sale: Sale) => (
                 <span
-                  className={`px-2 py-1 rounded-full text-xs ${
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium',
                     sale.delivery_status === 'delivered'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'status-success'
                       : sale.delivery_status === 'sent'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
+                        ? 'status-info'
+                        : 'status-neutral',
+                  )}
                 >
                   {
                     DELIVERY_STATUS_OPTIONS.find(
@@ -175,30 +182,33 @@ export function Sales() {
           mobileCardTitle={(sale: Sale) => sale.product_description}
           mobileCardSubtitle={(sale: Sale) => (
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm text-gray-600">{sale.buyer?.name || 'Sem comprador'}</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-sm text-muted-foreground">{sale.buyer?.name || 'Sem comprador'}</span>
+              <span className="text-xs text-muted-foreground/70">
                 {format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR })}
               </span>
             </div>
           )}
           actions={(sale: Sale) => (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="default" size="sm" asChild>
                 <Link to={`/vendas/${sale.id}`}>
                   <Eye className="h-4 w-4" />
+                  Visualizar
                 </Link>
               </Button>
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
                 onClick={() => navigate(`/vendas/${sale.id}/editar`)}
               >
                 <Pencil className="h-4 w-4" />
+                Editar
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 text-ehite" />
+                    Excluir
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

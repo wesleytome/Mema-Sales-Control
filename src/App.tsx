@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
 import { Login } from '@/pages/auth/Login';
@@ -122,12 +123,14 @@ function AppRoutes() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <Toaster />
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <Toaster />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
