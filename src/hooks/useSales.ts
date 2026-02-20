@@ -4,6 +4,12 @@ import { supabase } from '@/lib/supabase';
 import type { Sale, SaleWithDetails, Installment } from '@/types';
 import { toast } from 'sonner';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro inesperado';
+};
+
 export function useSales() {
   return useQuery({
     queryKey: ['sales'],
@@ -94,8 +100,8 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       toast.success('Venda criada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao criar venda');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao criar venda');
     },
   });
 }
@@ -120,8 +126,8 @@ export function useUpdateSale() {
       queryClient.invalidateQueries({ queryKey: ['sales', variables.id] });
       toast.success('Venda atualizada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar venda');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao atualizar venda');
     },
   });
 }
@@ -139,9 +145,8 @@ export function useDeleteSale() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       toast.success('Venda excluída com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao excluir venda');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao excluir venda');
     },
   });
 }
-

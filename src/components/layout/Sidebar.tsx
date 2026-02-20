@@ -12,8 +12,8 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/useAuth';
+import { useTheme } from '@/contexts/useTheme';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/useSidebar';
@@ -110,7 +110,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-2 py-4">
-        <TooltipProvider delayDuration={0}>
+        <TooltipProvider>
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             const linkContent = (
@@ -153,7 +153,7 @@ export function Sidebar() {
 
       {/* Sign out + Theme */}
       <div className="border-t border-sidebar-border p-3 space-y-1">
-        <TooltipProvider delayDuration={0}>
+        <TooltipProvider>
           {/* Theme toggle */}
           {isCollapsed ? (
             <Tooltip>

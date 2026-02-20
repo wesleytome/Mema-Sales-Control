@@ -1,5 +1,5 @@
 // Componente de input numérico com botões de incremento/decremento
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState } from 'react';
 import { Input } from './input';
 import { Button } from './button';
 import { Minus, Plus } from 'lucide-react';
@@ -16,17 +16,10 @@ export interface NumberInputProps
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
   ({ value = 0, onChange, min = 0, max, step = 1, className, ...props }, ref) => {
-    const [displayValue, setDisplayValue] = useState(() => {
-      return value?.toString() || '';
-    });
+    const [displayValue, setDisplayValue] = useState(() => value?.toString() || '');
     const [isFocused, setIsFocused] = useState(false);
-
-    // Sincroniza o valor exibido quando o valor externo muda (mas não quando está focado)
-    useEffect(() => {
-      if (!isFocused && value !== undefined && value !== null) {
-        setDisplayValue(value.toString());
-      }
-    }, [value, isFocused]);
+    const derivedDisplayValue = value !== undefined && value !== null ? value.toString() : '';
+    const currentDisplayValue = isFocused ? displayValue : derivedDisplayValue;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
@@ -128,7 +121,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           ref={ref}
           type="text"
           inputMode="numeric"
-          value={displayValue}
+        value={currentDisplayValue}
           onChange={handleChange}
           onFocus={(e) => {
             setIsFocused(true);
@@ -161,4 +154,3 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 );
 
 NumberInput.displayName = 'NumberInput';
-

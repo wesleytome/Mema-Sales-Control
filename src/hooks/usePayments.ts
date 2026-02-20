@@ -4,6 +4,12 @@ import { supabase } from '@/lib/supabase';
 import type { Payment, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro inesperado';
+};
+
 export function usePayments(status?: PaymentStatus) {
   return useQuery({
     queryKey: ['payments', status],
@@ -104,8 +110,8 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       toast.success('Comprovante enviado com sucesso! Aguarde aprovação.');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao enviar comprovante');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao enviar comprovante');
     },
   });
 }
@@ -143,9 +149,8 @@ export function useUpdatePayment() {
           : 'Pagamento rejeitado.'
       );
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar pagamento');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao atualizar pagamento');
     },
   });
 }
-

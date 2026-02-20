@@ -1,4 +1,5 @@
 // Dashboard operacional — Mobile First
+import type { Installment, Sale } from '@/types';
 import { useSales } from '@/hooks/useSales';
 import { useInstallments } from '@/hooks/useInstallments';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
+type ReceiptsTab = 'overdue' | 'upcoming' | 'all';
+
 const formatBRL = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -25,7 +28,7 @@ export function Dashboard() {
   const { data: sales, isLoading: salesLoading } = useSales();
   const { data: allInstallments, isLoading: installmentsLoading } = useInstallments();
   const isMobile = useIsMobile();
-  const [receiptsTab, setReceiptsTab] = useState<'overdue' | 'upcoming' | 'all'>('overdue');
+  const [receiptsTab, setReceiptsTab] = useState<ReceiptsTab>('overdue');
 
   if (salesLoading || installmentsLoading) {
     return (
@@ -96,7 +99,7 @@ export function Dashboard() {
 
   const recentSales = sales?.slice(0, 5) || [];
 
-  const renderPaymentItem = (inst: any) => {
+  const renderPaymentItem = (inst: Installment) => {
     if (!inst.due_date) return null;
     const dueDate = new Date(inst.due_date);
     dueDate.setHours(0, 0, 0, 0);
@@ -161,7 +164,7 @@ export function Dashboard() {
     );
   };
 
-  const renderSaleItem = (sale: any) => (
+  const renderSaleItem = (sale: Sale) => (
     <Link
       key={sale.id}
       to={`/vendas/${sale.id}`}
@@ -321,7 +324,7 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs value={receiptsTab} onValueChange={(v) => setReceiptsTab(v as any)} className="w-full">
+            <Tabs value={receiptsTab} onValueChange={(value) => setReceiptsTab(value as ReceiptsTab)} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-4">
                 <TabsTrigger value="overdue" className="text-xs sm:text-sm">
                   Atrasados

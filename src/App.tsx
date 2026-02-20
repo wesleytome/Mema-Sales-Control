@@ -1,8 +1,9 @@
 // App principal com rotas
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
@@ -15,6 +16,7 @@ import { SaleDetail } from '@/pages/admin/SaleDetail';
 import { SaleEdit } from '@/pages/admin/SaleEdit';
 import { Payments } from '@/pages/admin/Payments';
 import { PaymentUpload } from '@/pages/public/PaymentUpload';
+import { CustomerHome } from '@/pages/public/CustomerHome';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,9 +45,22 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route
-        path="/pay/:saleId"
+        path="/customer/:saleId"
+        element={<CustomerHome />}
+      />
+      <Route
+        path="/user/:saleId"
+        element={<CustomerHome />}
+      />
+      <Route
+        path="/customer/:seedSaleId/compra/:saleId"
         element={<PaymentUpload />}
       />
+      <Route
+        path="/user/:seedSaleId/compra/:saleId"
+        element={<PaymentUpload />}
+      />
+      <Route path="/pay/:saleId" element={<LegacyPayRedirect />} />
       <Route
         path="/"
         element={
@@ -118,6 +133,12 @@ function AppRoutes() {
       />
     </Routes>
   );
+}
+
+function LegacyPayRedirect() {
+  const { saleId } = useParams<{ saleId: string }>();
+  if (!saleId) return <Navigate to="/login" replace />;
+  return <Navigate to={`/customer/${saleId}`} replace />;
 }
 
 function App() {

@@ -4,6 +4,12 @@ import { supabase } from '@/lib/supabase';
 import type { Buyer } from '@/types';
 import { toast } from 'sonner';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro inesperado';
+};
+
 export function useBuyers() {
   return useQuery({
     queryKey: ['buyers'],
@@ -54,8 +60,8 @@ export function useCreateBuyer() {
       queryClient.invalidateQueries({ queryKey: ['buyers'] });
       toast.success('Comprador criado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao criar comprador');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao criar comprador');
     },
   });
 }
@@ -80,8 +86,8 @@ export function useUpdateBuyer() {
       queryClient.invalidateQueries({ queryKey: ['buyers', variables.id] });
       toast.success('Comprador atualizado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar comprador');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao atualizar comprador');
     },
   });
 }
@@ -102,9 +108,8 @@ export function useDeleteBuyer() {
       queryClient.invalidateQueries({ queryKey: ['buyers'] });
       toast.success('Comprador excluído com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao excluir comprador');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao excluir comprador');
     },
   });
 }
-

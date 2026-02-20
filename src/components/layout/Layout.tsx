@@ -2,8 +2,8 @@
 import { Sidebar } from './Sidebar';
 import { BottomTabBar } from './BottomTabBar';
 import { useSidebar } from '@/hooks/useSidebar';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/useAuth';
+import { useTheme } from '@/contexts/useTheme';
 import { cn } from '@/lib/utils';
 import { TrendingUp, Sun, Moon, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -2,20 +2,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 interface TooltipContextValue {
-  delayDuration: number
   open: boolean
   setOpen: (open: boolean) => void
 }
 
 const TooltipContext = React.createContext<TooltipContextValue | null>(null)
 
-const TooltipProvider = ({ 
-  children, 
-  delayDuration: _delayDuration = 0 
-}: { 
-  children: React.ReactNode
-  delayDuration?: number 
-}) => {
+const TooltipProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
@@ -25,40 +18,24 @@ interface TooltipProps {
 
 const Tooltip = ({ children }: TooltipProps) => {
   const [open, setOpen] = React.useState(false)
-  const timeoutRef = React.useRef<number | null>(null)
-
   const handleMouseEnter = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-    }
     setOpen(true)
   }
 
   const handleMouseLeave = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-    }
     setOpen(false)
   }
 
-  React.useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
-
   return (
-    <TooltipContext.Provider value={{ delayDuration: 0, open, setOpen }}>
+    <TooltipContext.Provider value={{ open, setOpen }}>
       <div
         className="relative"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {React.Children.map(children, (child) => {
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child, { open } as any)
+          if (React.isValidElement<{ open?: boolean }>(child)) {
+            return React.cloneElement(child, { open })
           }
           return child
         })}
@@ -69,15 +46,14 @@ const Tooltip = ({ children }: TooltipProps) => {
 
 interface TooltipTriggerProps {
   asChild?: boolean
-  children: React.ReactNode
-  open?: boolean
+  children: React.ReactElement
 }
 
-const TooltipTrigger = ({ children, asChild, open, ...props }: TooltipTriggerProps) => {
+const TooltipTrigger = ({ children, asChild, ...props }: TooltipTriggerProps) => {
   if (asChild && React.isValidElement(children)) {
     return React.cloneElement(children, {
       ...props,
-    } as any)
+    })
   }
 
   return <>{children}</>
@@ -123,4 +99,3 @@ const TooltipContent = React.forwardRef<HTMLDivElement, TooltipContentProps>(
 TooltipContent.displayName = "TooltipContent"
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
-

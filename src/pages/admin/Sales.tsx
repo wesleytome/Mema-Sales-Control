@@ -94,6 +94,7 @@ export function Sales() {
               id: 'buyer',
               header: 'Comprador',
               accessor: (sale: Sale) => sale.buyer?.name || '-',
+              hideInMobileCard: true,
               filterable: true,
               defaultVisible: true,
             },
@@ -101,6 +102,7 @@ export function Sales() {
               id: 'product',
               header: 'Produto',
               accessor: 'product_description',
+              hideInMobileCard: true,
               filterable: true,
               defaultVisible: true,
             },
@@ -181,23 +183,18 @@ export function Sales() {
           searchPlaceholder="Buscar vendas..."
           mobileCardTitle={(sale: Sale) => sale.product_description}
           mobileCardSubtitle={(sale: Sale) => (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm text-muted-foreground">{sale.buyer?.name || 'Sem comprador'}</span>
-              <span className="text-xs text-muted-foreground/70">
-                {format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR })}
-              </span>
-            </div>
+            <span className="text-sm text-muted-foreground">{sale.buyer?.name || 'Sem comprador'}</span>
           )}
           actions={(sale: Sale) => (
             <>
-              <Button variant="default" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild>
                 <Link to={`/vendas/${sale.id}`}>
                   <Eye className="h-4 w-4" />
                   Visualizar
                 </Link>
               </Button>
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={() => navigate(`/vendas/${sale.id}/editar`)}
               >
@@ -207,7 +204,7 @@ export function Sales() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
-                    <Trash2 className="h-4 w-4 text-ehite" />
+                    <Trash2 className="h-4 w-4 text-white" />
                     Excluir
                   </Button>
                 </AlertDialogTrigger>
@@ -236,4 +233,3 @@ export function Sales() {
     </div>
   );
 }
-

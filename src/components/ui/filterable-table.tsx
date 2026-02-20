@@ -20,6 +20,7 @@ export interface FilterableColumn<T> {
   header: string;
   accessor: keyof T | ((row: T) => ReactNode);
   className?: string;
+  hideInMobileCard?: boolean;
   filterable?: boolean;
   filterType?: 'text' | 'select';
   filterOptions?: { label: string; value: string }[];
@@ -37,7 +38,7 @@ interface FilterableTableProps<T> {
   searchPlaceholder?: string;
 }
 
-export function FilterableTable<T extends Record<string, any>>({
+export function FilterableTable<T>({
   data,
   columns,
   keyExtractor,
@@ -326,6 +327,9 @@ export function FilterableTable<T extends Record<string, any>>({
                   <div className="pt-2 space-y-1.5">
                     {visibleColumnsList
                       .filter((column) => {
+                        if (column.hideInMobileCard) {
+                          return false;
+                        }
                         // Filtrar coluna "name" no mobile card já que está no título
                         if (column.id === 'name' && mobileCardTitle) {
                           return false;
@@ -337,10 +341,14 @@ export function FilterableTable<T extends Record<string, any>>({
                         return value !== null && value !== undefined && value !== '-';
                       })
                       .map((column, index) => {
-                        const value =
-                          typeof column.accessor === 'function'
-                            ? column.accessor(row)
-                            : row[column.accessor];
+                        const accessor = column.accessor;
+                        const isFunctionAccessor = typeof accessor === 'function';
+                        const rawValue = isFunctionAccessor
+                          ? accessor(row)
+                          : row[accessor as keyof T];
+                        const displayValue = isFunctionAccessor
+                          ? (rawValue as ReactNode)
+                          : String(rawValue ?? '');
 
                         return (
                           <div key={index} className="flex justify-between items-start gap-2">
@@ -348,14 +356,14 @@ export function FilterableTable<T extends Record<string, any>>({
                               {column.header}:
                             </span>
                             <span className="text-sm text-foreground text-right flex-1">
-                              {value}
+                              {displayValue}
                             </span>
                           </div>
                         );
                       })}
                   </div>
                   {actions && (
-                    <div className="pt-3 mt-2 border-t border-gray-200 flex justify-end gap-2">
+                    <div className="pt-3 mt-2 border-t border-gray-200 flex flex-wrap justify-end gap-2">
                       {actions(row)}
                     </div>
                   )}
@@ -372,34 +380,38 @@ export function FilterableTable<T extends Record<string, any>>({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {visibleColumnsList.map((column) => (
-                      <TableHead key={column.id} className={column.className}>
-                        {column.header}
-                      </TableHead>
-                    ))}
+                      {visibleColumnsList.map((column) => (
+                        <TableHead key={column.id} className={column.className}>
+                          {column.header}
+                        </TableHead>
+                      ))}
                     {actions && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.map((row) => (
-                    <TableRow key={keyExtractor(row)}>
-                      {visibleColumnsList.map((column) => {
-                        const value =
-                          typeof column.accessor === 'function'
-                            ? column.accessor(row)
-                            : row[column.accessor];
+                      {filteredData.map((row) => (
+                        <TableRow key={keyExtractor(row)}>
+                          {visibleColumnsList.map((column) => {
+                          const accessor = column.accessor;
+                          const isFunctionAccessor = typeof accessor === 'function';
+                          const rawValue = isFunctionAccessor
+                            ? accessor(row)
+                            : row[accessor as keyof T];
+                            const displayValue = isFunctionAccessor
+                              ? (rawValue as ReactNode)
+                              : String(rawValue ?? '');
 
-                        return (
-                          <TableCell key={column.id} className={column.className}>
-                            {value}
-                          </TableCell>
-                        );
-                      })}
-                      {actions && (
-                        <TableCell className="text-right">{actions(row)}</TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                            return (
+                              <TableCell key={column.id} className={column.className}>
+                                {displayValue}
+                              </TableCell>
+                            );
+                          })}
+                          {actions && (
+                            <TableCell className="text-right">{actions(row)}</TableCell>
+                          )}
+                        </TableRow>
+                      ))}
                 </TableBody>
               </Table>
             </div>
@@ -536,17 +548,24 @@ export function FilterableTable<T extends Record<string, any>>({
                 <CardContent className="px-4 pb-4 space-y-2.5">
                   {visibleColumnsList
                     .filter((column) => {
-                      const value =
-                        typeof column.accessor === 'function'
-                          ? column.accessor(row)
-                          : row[column.accessor];
-                      return value !== null && value !== undefined && value !== '-';
+                      const accessor = column.accessor;
+                      const isFunctionAccessor = typeof accessor === 'function';
+                      const rawValue = isFunctionAccessor
+                        ? accessor(row)
+                        : row[accessor as keyof T];
+                      const value = rawValue ?? '';
+                      const valueString = typeof value === 'string' ? value : String(value);
+                      return valueString !== '-' && valueString !== '';
                     })
                     .map((column, index) => {
-                      const value =
-                        typeof column.accessor === 'function'
-                          ? column.accessor(row)
-                          : row[column.accessor];
+                      const accessor = column.accessor;
+                      const isFunctionAccessor = typeof accessor === 'function';
+                      const rawValue = isFunctionAccessor
+                        ? accessor(row)
+                        : row[accessor as keyof T];
+                      const displayValue = isFunctionAccessor
+                        ? (rawValue as ReactNode)
+                        : String(rawValue ?? '');
 
                       return (
                         <div
@@ -557,7 +576,7 @@ export function FilterableTable<T extends Record<string, any>>({
                             {column.header}
                           </span>
                           <span className="text-sm text-gray-900 font-medium break-words">
-                            {value}
+                            {displayValue}
                           </span>
                         </div>
                       );
@@ -600,14 +619,18 @@ export function FilterableTable<T extends Record<string, any>>({
                 filteredData.map((row) => (
                   <TableRow key={keyExtractor(row)}>
                     {visibleColumnsList.map((column) => {
-                      const value =
-                        typeof column.accessor === 'function'
-                          ? column.accessor(row)
-                          : row[column.accessor];
+                      const accessor = column.accessor;
+                      const isFunctionAccessor = typeof accessor === 'function';
+                      const rawValue = isFunctionAccessor
+                        ? accessor(row)
+                        : row[accessor as keyof T];
+                      const displayValue = isFunctionAccessor
+                        ? (rawValue as ReactNode)
+                        : String(rawValue ?? '');
 
                       return (
                         <TableCell key={column.id} className={column.className}>
-                          {value}
+                          {displayValue}
                         </TableCell>
                       );
                     })}
@@ -624,4 +647,3 @@ export function FilterableTable<T extends Record<string, any>>({
     </div>
   );
 }
-

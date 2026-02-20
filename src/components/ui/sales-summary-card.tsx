@@ -10,6 +10,43 @@ import { ptBR } from 'date-fns/locale';
 import { Skeleton } from './skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 
+const formatAbbreviatedValue = (value: number): string => {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  }
+  return value.toString();
+};
+
+interface SalesBarLabelProps {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  value?: number | string;
+}
+
+const SalesBarLabel = ({ x, y, width, value }: SalesBarLabelProps) => {
+  const numericValue = typeof value === 'string' ? Number(value) : value ?? 0;
+  if (!numericValue) return null;
+  const xPos = typeof x === 'string' ? Number(x) : x ?? 0;
+  const yPos = typeof y === 'string' ? Number(y) : y ?? 0;
+  const widthValue = typeof width === 'string' ? Number(width) : width ?? 0;
+  return (
+    <text
+      x={xPos + widthValue / 2}
+      y={yPos - 5}
+      fill="#374151"
+      textAnchor="middle"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {formatAbbreviatedValue(numericValue)}
+    </text>
+  );
+};
+
 interface SalesSummaryCardProps {
   sales: Sale[];
   installments: Installment[];
@@ -179,35 +216,6 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
       color: '#14b8a6', // teal-500
     },
   } satisfies ChartConfig;
-
-  // Função para formatar valores abreviados
-  const formatAbbreviatedValue = (value: number): string => {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}k`;
-    }
-    return value.toString();
-  };
-
-  // Componente customizado para o label acima da barra
-  const CustomLabel = (props: any) => {
-    const { x, y, width, value } = props;
-    if (!value || value === 0) return null;
-    return (
-      <text
-        x={x + width / 2}
-        y={y - 5}
-        fill="#374151"
-        textAnchor="middle"
-        fontSize={11}
-        fontWeight={600}
-      >
-        {formatAbbreviatedValue(value)}
-      </text>
-    );
-  };
 
   const monthOptions = useMemo(() => {
     if (!sales || sales.length === 0) {
@@ -518,10 +526,10 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
                 fill="var(--color-vendas)"
                 radius={[6, 6, 0, 0]}
               >
-                <LabelList 
-                  content={<CustomLabel />}
-                  position="top"
-                />
+              <LabelList 
+                content={(props) => <SalesBarLabel {...props} />}
+                position="top"
+              />
               </Bar>
             </RechartsBarChart>
           </ChartContainer>
@@ -530,4 +538,3 @@ export function SalesSummaryCard({ sales, installments, isLoading }: SalesSummar
     </Card>
   );
 }
-

@@ -7,7 +7,7 @@ import { FilterableTable, type FilterableColumn } from '@/components/ui/filterab
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/ui/phone-input';
-import { CPFInput, validateCPF } from '@/components/ui/cpf-input';
+import { CPFInput } from '@/components/ui/cpf-input';
 import { CEPInput } from '@/components/ui/cep-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Pencil, Trash2, Eye, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { validateCPF } from '@/lib/cpf';
 import type { Buyer } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BRAZILIAN_STATES } from '@/lib/constants';
@@ -67,6 +68,10 @@ const buyerSchema = z.object({
 
 type BuyerFormData = z.infer<typeof buyerSchema>;
 
+type BuyersLocationState = {
+  editBuyerId?: string;
+};
+
 export function Buyers() {
   const location = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -78,7 +83,8 @@ export function Buyers() {
 
   // Verificar se há um buyerId no state para abrir o dialog de edição
   useEffect(() => {
-    const editBuyerId = (location.state as any)?.editBuyerId;
+    const state = location.state as BuyersLocationState | undefined;
+    const editBuyerId = state?.editBuyerId;
     if (editBuyerId && buyers) {
       const buyer = buyers.find((b) => b.id === editBuyerId);
       if (buyer) {
@@ -520,14 +526,14 @@ export function Buyers() {
           mobileCardSubtitle={() => null}
           actions={(buyer) => (
             <>
-              <Button variant="default" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild>
                 <Link to={`/compradores/${buyer.id}`}>
                   <Eye className="h-4 w-4" />
                   Visualizar
                 </Link>
               </Button>
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={() => handleOpenDialog(buyer)}
               >
@@ -566,4 +572,3 @@ export function Buyers() {
     </div>
   );
 }
-

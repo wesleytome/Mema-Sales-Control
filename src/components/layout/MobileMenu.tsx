@@ -8,7 +8,7 @@ import {
   LogOut,
   Menu
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -98,4 +98,3 @@ export function MobileMenu() {
     </Sheet>
   );
 }
-

@@ -1,20 +1,8 @@
 // Contexto de autenticação
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-
-// Tipos inferidos do retorno de getSession()
-type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'];
-type User = NonNullable<Session>['user'];
-
-interface AuthContextType {
-  user: User | null;
-  session: Session;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from '@/contexts/auth-context';
+import type { Session, User } from '@/contexts/auth-context';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -62,12 +50,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de AuthProvider');
-  }
-  return context;
-}
-
