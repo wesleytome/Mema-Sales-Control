@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, CalendarIcon, UserPlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { validateCPF } from '@/lib/cpf';
@@ -643,588 +644,574 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Formulário de Venda */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            <FormField
-              control={form.control}
-              name="buyer_id"
-              render={({ field }) => (
-                <FormItem className="space-y-2">
-                  <FormLabel className="text-sm font-medium text-foreground/90">Comprador *</FormLabel>
-                  <FormControl>
-                    <BuyerSelect
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Selecione um comprador"
-                      onNewBuyer={() => setShowBuyerForm(true)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Formulário de Novo Comprador */}
-          {showBuyerForm && (
-            <div className="border border-border/60 rounded-2xl p-6 space-y-5 bg-gradient-to-br from-accent/30 to-background shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-                    <UserPlus className="h-5 w-5 text-primary" />
-                    Novo Comprador
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1.5">
-                    Preencha os dados do comprador antes de criar a venda
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowBuyerForm(false);
-                    buyerForm.reset();
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <Form {...buyerForm}>
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                    <FormField
-                      control={buyerForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="text-sm font-medium text-foreground/90">Nome *</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Nome completo" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={buyerForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Telefone</FormLabel>
-                          <FormControl>
-                            <PhoneInput
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={buyerForm.control}
-                      name="cpf"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>CPF</FormLabel>
-                          <FormControl>
-                            <CPFInput
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                              validate={true}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={buyerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="email" placeholder="email@exemplo.com" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Separator className="my-5 border-border/40" />
-
-                  <div className="space-y-1.5">
-                    <h3 className="text-sm font-semibold text-foreground">Dados de Endereço</h3>
-                    <p className="text-xs text-muted-foreground">Preencha os dados de endereço do comprador</p>
-                  </div>
-
-                  <FormField
-                    control={buyerForm.control}
-                    name="cep"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>CEP</FormLabel>
-                        <FormControl>
-                          <CEPInput
-                            value={field.value || ''}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            onAddressFound={handleAddressFound}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={buyerForm.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2 sm:col-span-2">
-                          <FormLabel>Logradouro</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Rua, Avenida, etc." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={buyerForm.control}
-                      name="address_number"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Número</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="123" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={buyerForm.control}
-                    name="address_complement"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Complemento</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Apto, Bloco, Sala, etc." />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={buyerForm.control}
-                    name="neighborhood"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Bairro</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Nome do bairro" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={buyerForm.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Nome da cidade" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={buyerForm.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Estado (UF)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {BRAZILIAN_STATES.map((state) => (
-                                <SelectItem key={state.value} value={state.value}>
-                                  {state.label} ({state.value})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={buyerForm.control}
-                    name="address_reference"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Referência</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ponto de referência para entregas" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </Form>
-            </div>
-          )}
-
-          <Separator className={cn(showBuyerForm ? 'border-border/40' : 'hidden')} />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-
-          <FormField
-            control={form.control}
-            name="sale_date"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-medium text-foreground/90">Data da Venda *</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full pl-3 text-left font-normal',
-                          !field.value && 'text-muted-foreground'
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, 'dd/MM/yyyy')
-                        ) : (
-                          <span>Selecione uma data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="product_description"
-          render={({ field }) => (
-            <FormItem className="space-y-2">
-              <FormLabel className="text-sm font-medium text-foreground/90">Descrição do Produto *</FormLabel>
-              <FormControl>
-                <ProductAutocomplete
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  placeholder="Ex: Geladeira Brastemp"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          <FormField
-            control={form.control}
-            name="purchase_price"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-medium text-foreground/90">Custo do produto</FormLabel>
-                <FormControl>
-                  <CurrencyInput
-                    value={field.value ?? 0}
-                    onChange={(value) => field.onChange(value || null)}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sale_price"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-medium text-foreground/90">Valor de Venda *</FormLabel>
-                <FormControl>
-                  <CurrencyInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          <FormField
-            control={form.control}
-            name="delivery_status"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <FormLabel className="text-sm font-medium text-foreground/90">Status de Entrega</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {DELIVERY_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem className="space-y-2">
-              <FormLabel className="text-sm font-medium text-foreground/90">Observações</FormLabel>
-              <FormControl>
-                <Textarea {...field} placeholder="Observações adicionais..." />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold">Pagamento</h3>
-            <Tabs 
-              value={paymentMode} 
-              onValueChange={(v) => {
-                const mode = v as 'fixed' | 'flexible';
-                setPaymentMode(mode);
-                form.setValue('payment_mode', mode);
-                
-                if (mode === 'flexible') {
-                  // Limpar parcelas fixas e criar installment virtual
-                  form.setValue('installments', []);
-                }
-              }}
-            >
-              <TabsList>
-                <TabsTrigger value="fixed">Parcelamento Fixo</TabsTrigger>
-                <TabsTrigger value="flexible">Pagamento Flexível</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {paymentMode === 'flexible' ? (
-            <div className="border rounded-lg p-4 bg-blue-50">
-              <h4 className="font-semibold text-sm mb-2">Modo Flexível Ativo</h4>
-              <p className="text-sm text-gray-600 mb-3">
-                Cliente pagará valores variáveis em datas livres. Os pagamentos serão registrados após a criação da venda.
-              </p>
-              <div className="mt-3">
-                <span className="text-sm text-gray-700">Total a receber: </span>
-                <span className="text-lg font-bold">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(salePrice || 0)}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-medium">Parcelas</h3>
-                <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
-                  <TabsList>
-                    <TabsTrigger value="auto">Automático</TabsTrigger>
-                    <TabsTrigger value="manual">Manual</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-          {parcelMode === 'auto' ? (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="w-full sm:w-48">
-                  <NumberInput
-                    value={numParcels}
-                    onChange={(newValue) => setNumParcels(newValue)}
-                    min={1}
-                    max={100}
-                    placeholder="Número de parcelas"
-                    className="w-full"
-                  />
-                </div>
-                <Button type="button" onClick={handleAutoSplit} className="w-full sm:w-auto">
-                  Gerar Parcelas
-                </Button>
-              </div>
-              {fields.length > 0 && (
-                <p className="text-sm text-gray-500">
-                  {fields.length} parcela(s) cadastrada(s) - Total: {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(
-                    installments.reduce((sum, inst) => sum + inst.amount, 0)
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
+          <Card className="border-border/80">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-lg">Comprador</CardTitle>
+              <CardDescription>Selecione um comprador para vincular a venda.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <FormField
+                  control={form.control}
+                  name="buyer_id"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2 sm:col-span-2">
+                      <FormLabel>Comprador *</FormLabel>
+                      <FormControl>
+                        <BuyerSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Selecione um comprador"
+                          onNewBuyer={() => setShowBuyerForm(true)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Button type="button" onClick={handleAddManualParcel} variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Parcela
-              </Button>
-              {fields.length > 0 && (
-                <p className="text-sm text-gray-500">
-                  {fields.length} parcela(s) cadastrada(s) - Total: {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }                  ).format(
-                    installments.reduce((sum, inst) => sum + inst.amount, 0)
-                  )} / {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(salePrice)}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex gap-3 items-end p-5 border border-border/60 rounded-xl bg-card shadow-sm">
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`installments.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel className="text-sm font-medium text-foreground/90">Valor</FormLabel>
-                        <FormControl>
-                          <CurrencyInput
-                            value={field.value}
-                            onChange={(newValue) => {
-                              field.onChange(newValue);
-                              handleInstallmentAmountChange(index);
-                            }}
-                            onBlur={() => {
-                              field.onBlur();
-                              handleInstallmentAmountBlur(index);
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`installments.${index}.due_date`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel className="text-sm font-medium text-foreground/90">Data de Vencimento</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'w-full pl-3 text-left font-normal',
-                                  !field.value && 'text-muted-foreground'
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, 'dd/MM/yyyy')
-                                ) : (
-                                  <span>Selecione uma data</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveInstallment(index)}
-                  disabled={fields.length <= 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                />
               </div>
-            ))}
-          </div>
-            </>
-          )}
-        </div>
 
-        <div className="flex justify-end gap-3 pt-2">
+              {showBuyerForm && (
+                <div className="border border-border/70 rounded-2xl p-5 space-y-5 bg-input">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <UserPlus className="h-5 w-5 text-primary" />
+                        Novo Comprador
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        Preencha os dados do comprador antes de criar a venda.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setShowBuyerForm(false);
+                        buyerForm.reset();
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Form {...buyerForm}>
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                        <FormField
+                          control={buyerForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Nome *</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Nome completo" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={buyerForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Telefone</FormLabel>
+                              <FormControl>
+                                <PhoneInput
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={buyerForm.control}
+                          name="cpf"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>CPF</FormLabel>
+                              <FormControl>
+                                <CPFInput
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                  validate={true}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={buyerForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="email" placeholder="email@exemplo.com" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <Separator className="my-5 border-border/60" />
+
+                      <div className="space-y-1.5">
+                        <h3 className="text-sm font-semibold text-foreground">Dados de Endereço</h3>
+                        <p className="text-xs text-muted-foreground">Preencha os dados de endereço do comprador.</p>
+                      </div>
+
+                      <FormField
+                        control={buyerForm.control}
+                        name="cep"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel>CEP</FormLabel>
+                            <FormControl>
+                              <CEPInput
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                onAddressFound={handleAddressFound}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <FormField
+                          control={buyerForm.control}
+                          name="address"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2 sm:col-span-2">
+                              <FormLabel>Logradouro</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Rua, Avenida, etc." />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={buyerForm.control}
+                          name="address_number"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Número</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="123" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={buyerForm.control}
+                        name="address_complement"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel>Complemento</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Apto, Bloco, Sala, etc." />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={buyerForm.control}
+                        name="neighborhood"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel>Bairro</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Nome do bairro" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField
+                          control={buyerForm.control}
+                          name="city"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Cidade</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Nome da cidade" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={buyerForm.control}
+                          name="state"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel>Estado (UF)</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value || ''}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o estado" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {BRAZILIAN_STATES.map((state) => (
+                                    <SelectItem key={state.value} value={state.value}>
+                                      {state.label} ({state.value})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={buyerForm.control}
+                        name="address_reference"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel>Referência</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Ponto de referência para entregas" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Form>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/80">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-lg">Dados do Produto</CardTitle>
+              <CardDescription>Preencha os dados da venda e condições de pagamento.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <FormField
+                  control={form.control}
+                  name="sale_date"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Data da Venda *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                            >
+                              {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Selecione uma data</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="product_description"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Descrição do Produto *</FormLabel>
+                    <FormControl>
+                      <ProductAutocomplete
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        placeholder="Ex: Geladeira Brastemp"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-3 sm:gap-5">
+                <FormField
+                  control={form.control}
+                  name="purchase_price"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Custo do produto</FormLabel>
+                      <FormControl>
+                        <CurrencyInput
+                          value={field.value ?? 0}
+                          onChange={(value) => field.onChange(value || null)}
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sale_price"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Valor de Venda *</FormLabel>
+                      <FormControl>
+                        <CurrencyInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <FormField
+                  control={form.control}
+                  name="delivery_status"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Status de Entrega</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DELIVERY_STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Observações adicionais..." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4 pt-2 border-t border-border/70">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold">Pagamento</h3>
+                  <Tabs
+                    value={paymentMode}
+                    onValueChange={(v) => {
+                      const mode = v as 'fixed' | 'flexible';
+                      setPaymentMode(mode);
+                      form.setValue('payment_mode', mode);
+
+                      if (mode === 'flexible') {
+                        form.setValue('installments', []);
+                      }
+                    }}
+                  >
+                    <TabsList>
+                      <TabsTrigger value="fixed">Parcelamento Fixo</TabsTrigger>
+                      <TabsTrigger value="flexible">Pagamento Flexível</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {paymentMode === 'flexible' ? (
+                  <div className="border border-border/70 rounded-2xl p-4 bg-input">
+                    <h4 className="font-semibold text-sm mb-2">Modo Flexível Ativo</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Cliente pagará valores variáveis em datas livres. Os pagamentos serão registrados após a criação da venda.
+                    </p>
+                    <div className="mt-3">
+                      <span className="text-sm text-muted-foreground">Total a receber: </span>
+                      <span className="text-lg font-bold">
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(salePrice || 0)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold">Parcelas</h3>
+                      <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
+                        <TabsList>
+                          <TabsTrigger value="auto">Automático</TabsTrigger>
+                          <TabsTrigger value="manual">Manual</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+
+                    {parcelMode === 'auto' ? (
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="w-full sm:w-48">
+                            <NumberInput
+                              value={numParcels}
+                              onChange={(newValue) => setNumParcels(newValue)}
+                              min={1}
+                              max={100}
+                              placeholder="Número de parcelas"
+                              className="w-full"
+                            />
+                          </div>
+                          <Button type="button" onClick={handleAutoSplit} className="w-full sm:w-auto">
+                            Gerar Parcelas
+                          </Button>
+                        </div>
+                        {fields.length > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            {fields.length} parcela(s) cadastrada(s) - Total:{' '}
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                              installments.reduce((sum, inst) => sum + inst.amount, 0),
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Button type="button" onClick={handleAddManualParcel} variant="outline">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Adicionar Parcela
+                        </Button>
+                        {fields.length > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            {fields.length} parcela(s) cadastrada(s) - Total:{' '}
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                              installments.reduce((sum, inst) => sum + inst.amount, 0),
+                            )}{' '}
+                            /{' '}
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(salePrice)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      {fields.map((field, index) => (
+                        <div key={field.id} className="flex gap-3 items-end p-5 border border-border/70 rounded-2xl bg-input">
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <FormField
+                              control={form.control}
+                              name={`installments.${index}.amount`}
+                              render={({ field }) => (
+                                <FormItem className="space-y-2">
+                                  <FormLabel>Valor</FormLabel>
+                                  <FormControl>
+                                    <CurrencyInput
+                                      value={field.value}
+                                      onChange={(newValue) => {
+                                        field.onChange(newValue);
+                                        handleInstallmentAmountChange(index);
+                                      }}
+                                      onBlur={() => {
+                                        field.onBlur();
+                                        handleInstallmentAmountBlur(index);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`installments.${index}.due_date`}
+                              render={({ field }) => (
+                                <FormItem className="space-y-2">
+                                  <FormLabel>Data de Vencimento</FormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                                        >
+                                          {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Selecione uma data</span>}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                        mode="single"
+                                        selected={field.value || undefined}
+                                        onSelect={field.onChange}
+                                        initialFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveInstallment(index)}
+                            disabled={fields.length <= 1}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end gap-3 pt-1">
           {isEditMode ? (
             <Button type="submit" disabled={createSale.isPending || updateSale.isPending}>
               {createSale.isPending || updateSale.isPending

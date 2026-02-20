@@ -9,11 +9,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
       className={cn(
         "bg-card text-card-foreground",
         "flex flex-col gap-4",
-        "rounded-2xl border border-border/50",
+        "rounded-[1.75rem] border border-border/80",
         "py-4 px-4",
-        "shadow-sm hover:shadow-md",
-        "transition-all duration-200",
-        "backdrop-blur-sm",
+        "shadow-[var(--box-shadow-widget)]",
+        "transition-colors duration-200",
         className
       )}
       {...props}

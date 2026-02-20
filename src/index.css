@@ -51,6 +51,10 @@
   --stroke-focus: var(--primary-01);
   --stroke-highlight: rgba(123, 123, 123, 0.5);
   --stroke-stroke2: var(--shade-08);
+  --button-primary-bg: #2f2f32;
+  --button-primary-fg: #f9f9f9;
+  --button-secondary-bg: #f3f3f4;
+  --button-secondary-fg: #343438;
 
   --color-chart-green: #00b512;
   --color-chart-yellow: var(--primary-05);
@@ -59,25 +63,33 @@
   --box-shadow-widget: 0px 5px 1.5px -4px rgba(8, 8, 8, 0.17), 0px 6px 4px -4px rgba(8, 8, 8, 0.12);
 }
 
+.dark,
 [data-theme="dark"] {
   --backgrounds-surface1: var(--shade-02);
   --backgrounds-surface2: var(--shade-03);
   --backgrounds-surface3: rgba(16, 16, 16, 0.5);
   --backgrounds-pop: var(--shade-04);
+  --backgrounds-highlight: #2a2a2c;
+  --backgrounds-depth2: #1f1f22;
   --backgrounds-dark1: var(--shade-08);
   --backgrounds-dark2: var(--shade-10);
   --text-primary: var(--shade-09);
   --text-secondary: var(--shade-07);
   --stroke-subtle: rgba(30, 30, 30, 0.25);
   --stroke-highlight: rgba(114, 114, 114, 0.5);
+  --stroke-stroke2: #3a3a3d;
+  --button-primary-bg: #f1f1f1;
+  --button-primary-fg: #1f1f22;
+  --button-secondary-bg: #2a2a2c;
+  --button-secondary-fg: #e9e9eb;
   --box-shadow-depth: 0px 2.15px 0.5px -2px rgba(0, 0, 0, 0.25), 0px 24px 24px -16px rgba(8, 8, 8, 0.06),
     0px 6px 13px 0px rgba(8, 8, 8, 0.08);
 }
 
 @theme inline {
-  --color-background: var(--backgrounds-surface2);
+  --color-background: var(--backgrounds-surface1);
   --color-foreground: var(--text-primary);
-  --color-card: var(--backgrounds-surface1);
+  --color-card: var(--backgrounds-surface2);
   --color-card-foreground: var(--text-primary);
   --color-popover: var(--backgrounds-pop);
   --color-popover-foreground: var(--text-primary);
@@ -85,14 +97,14 @@
   --color-primary-foreground: var(--text-light);
   --color-secondary: var(--primary-04);
   --color-secondary-foreground: var(--text-primary);
-  --color-muted: var(--shade-06);
-  --color-muted-foreground: var(--shade-08);
-  --color-accent: var(--primary-03);
-  --color-accent-foreground: var(--text-light);
+  --color-muted: var(--backgrounds-highlight);
+  --color-muted-foreground: var(--text-secondary);
+  --color-accent: var(--backgrounds-highlight);
+  --color-accent-foreground: var(--text-primary);
   --color-destructive: var(--primary-03);
   --color-destructive-foreground: var(--text-light);
   --color-border: var(--stroke-subtle);
-  --color-input: var(--backgrounds-surface1);
+  --color-input: var(--backgrounds-highlight);
   --color-ring: var(--stroke-focus);
   --color-chart-1: var(--color-chart-green);
   --color-chart-2: var(--primary-04);
@@ -115,7 +127,7 @@
   body {
     min-height: 100vh;
     margin: 0;
-    background: var(--backgrounds-dark2);
+    background: var(--backgrounds-surface1);
     color: var(--text-primary);
     font-family: var(--font-inter);
     line-height: 1.6;
@@ -180,5 +192,79 @@
 
   .group:hover .box-hover {
     opacity: 1;
+  }
+}
+
+@layer components {
+  .glass {
+    background: color-mix(in oklab, var(--backgrounds-surface2) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .gradient-brand {
+    background-image: linear-gradient(135deg, #2a85ff 0%, #4f8fff 48%, #7f5fff 100%);
+  }
+
+  .icon-chip {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.875rem;
+    border: 1px solid color-mix(in oklab, var(--stroke-stroke2) 90%, transparent);
+    background: var(--backgrounds-surface2);
+  }
+
+  .icon-chip.logo-tile {
+    background: var(--shade-07);
+    border-color: color-mix(in oklab, var(--shade-06) 60%, transparent);
+    color: var(--shade-10);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+
+  .dark .icon-chip.logo-tile,
+  [data-theme="dark"] .icon-chip.logo-tile {
+    background: var(--shade-05);
+    border-color: color-mix(in oklab, var(--shade-04) 70%, transparent);
+    color: var(--shade-10);
+  }
+
+  .elevation-1 {
+    box-shadow: var(--box-shadow-widget);
+  }
+
+  .hover-lift {
+    transition: transform var(--default-transition-duration), box-shadow var(--default-transition-duration);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--box-shadow-depth);
+  }
+
+  .status-success {
+    color: #008a47;
+    background: color-mix(in oklab, #00a656 12%, transparent);
+  }
+
+  .status-warning {
+    color: #c87800;
+    background: color-mix(in oklab, #ff9d34 16%, transparent);
+  }
+
+  .status-danger {
+    color: #d12f1a;
+    background: color-mix(in oklab, #ff381c 14%, transparent);
+  }
+
+  .status-info {
+    color: #1f5ec7;
+    background: color-mix(in oklab, #2a85ff 14%, transparent);
+  }
+
+  .status-neutral {
+    color: var(--text-secondary);
+    background: color-mix(in oklab, var(--shade-07) 12%, transparent);
   }
 }

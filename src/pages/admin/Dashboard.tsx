@@ -2,14 +2,13 @@
 import type { Installment, Sale } from '@/types';
 import { useSales } from '@/hooks/useSales';
 import { useInstallments } from '@/hooks/useInstallments';
+import { usePayments } from '@/hooks/usePayments';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { SalesChartCard } from '@/components/ui/sales-chart-card';
-import { DeliveriesChartCard } from '@/components/ui/deliveries-chart-card';
 import { SalesSummaryCard } from '@/components/ui/sales-summary-card';
-import { AlertCircle, DollarSign, TrendingUp, Bell, ArrowRight, CalendarDays } from 'lucide-react';
+import { AlertCircle, ArrowRight, CalendarDays } from 'lucide-react';
 import { format, isToday, isAfter, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,10 +26,11 @@ const formatBRL = (value: number) =>
 export function Dashboard() {
   const { data: sales, isLoading: salesLoading } = useSales();
   const { data: allInstallments, isLoading: installmentsLoading } = useInstallments();
+  const { data: payments, isLoading: paymentsLoading } = usePayments();
   const isMobile = useIsMobile();
   const [receiptsTab, setReceiptsTab] = useState<ReceiptsTab>('overdue');
 
-  if (salesLoading || installmentsLoading) {
+  if (salesLoading || installmentsLoading || paymentsLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <div className="space-y-1">
@@ -50,12 +50,6 @@ export function Dashboard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const threeDaysFromNow = addDays(today, 3);
-
-  const totalSold = sales?.reduce((sum, sale) => sum + sale.sale_price, 0) || 0;
-  const totalProfit = sales?.reduce((sum, sale) => {
-    const profit = sale.purchase_price ? sale.sale_price - sale.purchase_price : 0;
-    return sum + profit;
-  }, 0) || 0;
 
   const dueToday = allInstallments?.filter(
     (inst) => inst.due_date && isToday(new Date(inst.due_date)) && inst.status !== 'paid',
@@ -201,77 +195,9 @@ export function Dashboard() {
       <SalesSummaryCard
         sales={sales || []}
         installments={allInstallments || []}
-        isLoading={salesLoading || installmentsLoading}
+        payments={payments || []}
+        isLoading={salesLoading || installmentsLoading || paymentsLoading}
       />
-
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-        {/* Total Vendido */}
-        <Card className="elevation-1 border-border/70">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-xs font-medium text-muted-foreground leading-tight">Total Vendido</p>
-              <div className="icon-chip bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 !w-7 !h-7 !rounded-lg shrink-0">
-                <DollarSign className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-base sm:text-xl font-bold leading-tight break-all">{formatBRL(totalSold)}</p>
-          </CardContent>
-        </Card>
-
-        {/* Lucro */}
-        {totalProfit > 0 && (
-          <Card className="elevation-1 border-border/70">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="text-xs font-medium text-muted-foreground leading-tight">Lucro Total</p>
-                <div className="icon-chip bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 !w-7 !h-7 !rounded-lg shrink-0">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <p className="text-base sm:text-xl font-bold leading-tight text-emerald-600 break-all">
-                {formatBRL(totalProfit)}
-              </p>
-              {totalSold > 0 && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {((totalProfit / totalSold) * 100).toFixed(1)}% margem
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Atrasadas */}
-        <Card className={cn('elevation-1', overdue.length > 0 ? 'border-rose-200 bg-rose-50/30 dark:bg-rose-950/20 dark:border-rose-900/40' : 'border-border/70')}>
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-xs font-medium text-muted-foreground leading-tight">Atrasadas</p>
-              <div className={cn('icon-chip !w-7 !h-7 !rounded-lg shrink-0', overdue.length > 0 ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40' : 'bg-muted text-muted-foreground')}>
-                <Bell className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className={cn('text-base sm:text-xl font-bold leading-tight', overdue.length > 0 ? 'text-rose-600' : '')}>
-              {overdue.length}
-              <span className="text-xs font-normal text-muted-foreground ml-1">parcelas</span>
-            </p>
-            {overdue.length > 0 && (
-              <p className="text-xs font-semibold text-rose-600 mt-0.5 break-all">
-                {formatBRL(overdue.reduce((sum, inst) => sum + (inst.amount - inst.paid_amount), 0))}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className={isMobile ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'}>
-        <SalesChartCard
-          sales={sales || []}
-          installments={allInstallments || []}
-          isLoading={salesLoading || installmentsLoading}
-        />
-        <DeliveriesChartCard sales={sales || []} isLoading={salesLoading} />
-      </div>
 
       {/* Alerts */}
       {(dueToday.length > 0 || dueIn3Days.length > 0) && overdue.length === 0 && (
