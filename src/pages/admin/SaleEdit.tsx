@@ -5,6 +5,7 @@ import { SaleForm } from '@/components/sales/SaleForm';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function SaleEdit() {
   const { id } = useParams<{ id: string }>();
@@ -23,7 +24,7 @@ export function SaleEdit() {
   if (!sale) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Venda não encontrada</p>
+        <p className="text-muted-foreground">Venda não encontrada</p>
         <Button asChild className="mt-4">
           <Link to="/vendas">Voltar para Vendas</Link>
         </Button>
@@ -43,22 +44,23 @@ export function SaleEdit() {
         </Button>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Editar Venda</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Edite as informações da venda e parcelas
           </p>
         </div>
       </div>
 
       {/* Formulário */}
-      <div className="bg-white rounded-lg border p-6 sm:p-8">
-        <SaleForm
-          sale={sale}
-          onSuccess={() => {
-            navigate(`/vendas/${id}`);
-          }}
-        />
-      </div>
+      <Card className="border-border/80">
+        <CardContent className="p-4 sm:p-6">
+          <SaleForm
+            sale={sale}
+            onSuccess={() => {
+              navigate(`/vendas/${id}`);
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

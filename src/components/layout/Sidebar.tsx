@@ -8,7 +8,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -23,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { LogoMark } from '@/components/ui/logo-mark';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -65,8 +65,8 @@ export function Sidebar() {
       >
         {!isCollapsed && (
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <div className="icon-chip gradient-brand shadow-lg shadow-indigo-900/40 shrink-0">
-              <TrendingUp className="h-4 w-4 text-white" />
+            <div className="icon-chip logo-tile shrink-0">
+              <LogoMark className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-sidebar-foreground truncate leading-tight">
@@ -80,8 +80,8 @@ export function Sidebar() {
         )}
 
         {isCollapsed && (
-          <div className="icon-chip gradient-brand shadow-lg shadow-indigo-900/40">
-            <TrendingUp className="h-4 w-4 text-white" />
+          <div className="icon-chip logo-tile">
+            <LogoMark className="h-4 w-4" />
           </div>
         )}
 

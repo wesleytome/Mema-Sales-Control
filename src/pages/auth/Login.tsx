@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, TrendingUp, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { LogoMark } from '@/components/ui/logo-mark';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -35,44 +36,39 @@ export function Login() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
-      {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900" />
-
-      {/* Decorative blobs */}
-      <div className="absolute top-1/4 -left-24 h-72 w-72 rounded-full bg-indigo-600/20 blur-3xl" />
-      <div className="absolute bottom-1/4 -right-24 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
+      <div className="absolute inset-0 bg-background" />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-sm space-y-6">
 
         {/* Brand */}
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="icon-chip gradient-brand !w-16 !h-16 !rounded-2xl shadow-2xl shadow-indigo-500/40">
-            <TrendingUp className="h-8 w-8 text-white" />
+          <div className="icon-chip logo-tile !w-16 !h-16 !rounded-2xl">
+            <LogoMark className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Vendas Parceladas</h1>
-            <p className="text-sm text-white/50 mt-0.5 font-medium tracking-wide uppercase">Sistema de Gestão</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">MEMA</h1>
+            <p className="text-sm text-muted-foreground mt-0.5 font-medium tracking-wide uppercase">Gestão de Vendas</p>
           </div>
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-6 shadow-2xl space-y-5">
+        <div className="rounded-[1.75rem] border border-border/80 bg-card p-6 shadow-[var(--box-shadow-widget)] space-y-5">
           <div className="text-center">
-            <h2 className="text-lg font-semibold text-white">Entrar na conta</h2>
-            <p className="text-sm text-white/50 mt-0.5">Digite suas credenciais para acessar</p>
+            <h2 className="text-lg font-semibold text-foreground">Entrar na conta</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Digite suas credenciais para acessar</p>
           </div>
 
           {error && (
-            <Alert variant="destructive" className="border-rose-500/40 bg-rose-500/20 text-rose-200">
-              <AlertCircle className="h-4 w-4 text-rose-300" />
-              <AlertDescription className="text-sm text-rose-200">{error}</AlertDescription>
+            <Alert variant="destructive" className="border-rose-200 bg-rose-50 text-rose-700">
+              <AlertCircle className="h-4 w-4 text-rose-600" />
+              <AlertDescription className="text-sm text-rose-700">{error}</AlertDescription>
             </Alert>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-white/80">
+              <Label htmlFor="email" className="text-sm text-foreground">
                 Email
               </Label>
               <Input
@@ -83,13 +79,13 @@ export function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-indigo-400 focus:ring-indigo-400/30"
+                className="h-11"
                 autoComplete="email"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium text-white/80">
+              <Label htmlFor="password" className="text-sm text-foreground">
                 Senha
               </Label>
               <div className="relative">
@@ -101,13 +97,13 @@ export function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 pr-10 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-indigo-400 focus:ring-indigo-400/30"
+                  className="h-11 pr-10"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -117,7 +113,7 @@ export function Login() {
 
             <Button
               type="submit"
-              className="w-full h-11 text-base font-semibold gradient-brand border-0 shadow-lg shadow-indigo-500/30 hover:opacity-90 hover:shadow-indigo-500/50 transition-all"
+              className="w-full h-11 text-base font-semibold"
               disabled={loading}
             >
               {loading ? 'Entrando...' : 'Entrar'}
@@ -125,8 +121,8 @@ export function Login() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-white/30">
-          © {new Date().getFullYear()} Vendas Parceladas
+        <p className="text-center text-xs text-muted-foreground">
+          © {new Date().getFullYear()} MEMA
         </p>
       </div>
     </div>
