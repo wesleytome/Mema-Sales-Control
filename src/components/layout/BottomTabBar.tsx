@@ -46,7 +46,7 @@ export function BottomTabBar() {
               />
               <span
                 className={cn(
-                  'text-[10px] font-semibold leading-none tracking-wide',
+                  'text-[11px] font-semibold leading-none tracking-wide',
                   isActive ? 'text-primary' : 'text-muted-foreground',
                 )}
               >

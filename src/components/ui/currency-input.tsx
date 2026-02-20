@@ -1,5 +1,5 @@
 // Componente de input com máscara monetária brasileira
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState } from 'react';
 import { Input } from './input';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,6 @@ export interface CurrencyInputProps
 export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ value = 0, onChange, onBlur, className, ...props }, ref) => {
     const [displayValue, setDisplayValue] = useState(() => {
-      // Inicializa com o valor formatado se existir
       if (value !== undefined && value !== null && value > 0) {
         return formatCurrency(value);
       }
@@ -22,16 +21,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     });
     const [isFocused, setIsFocused] = useState(false);
 
-    // Atualiza o valor de exibição quando o valor numérico muda externamente
-    useEffect(() => {
-      if (!isFocused && value !== undefined && value !== null) {
-        if (value > 0) {
-          setDisplayValue(formatCurrency(value));
-        } else {
-          setDisplayValue('');
-        }
-      }
-    }, [value, isFocused]);
+    const formattedValue =
+      value !== undefined && value !== null && value > 0 ? formatCurrency(value) : '';
+    const currentDisplayValue = isFocused ? displayValue : formattedValue;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
@@ -57,22 +49,13 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(false);
       // Garante que o valor está formatado ao perder o foco
-      if (value !== undefined && value !== null && value > 0) {
-        setDisplayValue(formatCurrency(value));
-      } else {
-        setDisplayValue('');
-      }
+      setDisplayValue(formattedValue);
       onBlur?.(e);
     };
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
-      // Mantém a formatação ao focar para melhor UX
-      if (value && value > 0) {
-        setDisplayValue(formatCurrency(value));
-      } else {
-        setDisplayValue('');
-      }
+      setDisplayValue(formattedValue);
       props.onFocus?.(e);
     };
 
@@ -82,7 +65,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         ref={ref}
         type="text"
         inputMode="numeric"
-        value={displayValue}
+        value={currentDisplayValue}
         onChange={handleChange}
         onBlur={handleBlur}
         onFocus={handleFocus}
@@ -94,4 +77,3 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 );
 
 CurrencyInput.displayName = 'CurrencyInput';
-

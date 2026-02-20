@@ -52,7 +52,7 @@ export function SaleDetail() {
   const [sellerPaymentDate, setSellerPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
-  const publicLink = `${window.location.origin}/pay/${id}`;
+  const publicLink = `${window.location.origin}/customer/${id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicLink);

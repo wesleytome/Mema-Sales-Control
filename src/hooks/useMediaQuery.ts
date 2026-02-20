@@ -1,34 +1,31 @@
 // Hook para detectar breakpoints responsivos
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
+
+const getMatch = (query: string) => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return window.matchMedia(query).matches;
+};
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    
-    // Verifica o estado inicial
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
-
-    // Cria listener
-    const listener = () => setMatches(media.matches);
-    
-    // Adiciona listener
-    media.addEventListener('change', listener);
-    
-    // Cleanup
-    return () => media.removeEventListener('change', listener);
-  }, [matches, query]);
-
-  return matches;
+  return useSyncExternalStore(
+    (callback) => {
+      if (typeof window === 'undefined') {
+        return () => {};
+      }
+      const media = window.matchMedia(query);
+      const listener = () => callback();
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    },
+    () => getMatch(query),
+    () => false
+  );
 }
 
 // Hook específico para mobile
 export function useIsMobile(): boolean {
-  return useMediaQuery('(max-width: 768px)');
+  return useMediaQuery('(max-width: 767px)');
 }
-
-
 

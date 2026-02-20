@@ -180,7 +180,7 @@ export function Payments() {
               {payment.status === 'pending' ? (
                 <>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => handleApprove(payment)}
                     disabled={updatePayment.isPending}
@@ -189,7 +189,7 @@ export function Payments() {
                     Confirmar Recebimento
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => handleOpenRejectDialog(payment)}
                     disabled={updatePayment.isPending}
@@ -201,11 +201,12 @@ export function Payments() {
               ) : null}
               {payment.proof_url && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => window.open(payment.proof_url!, '_blank')}
                 >
                   <Eye className="h-4 w-4" />
+                  Ver comprovante
                 </Button>
               )}
             </>

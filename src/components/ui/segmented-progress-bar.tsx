@@ -30,17 +30,24 @@ export function SegmentedProgressBar({
     );
   }
 
-  let accumulatedWidth = 0;
+  const computedSegments = segments.map((segment, index) => {
+    const segmentPercentage = (segment.value / total) * 100;
+    const leftPosition = segments
+      .slice(0, index)
+      .reduce((sum, previous) => sum + (previous.value / total) * 100, 0);
+
+    return {
+      ...segment,
+      segmentPercentage,
+      leftPosition,
+    };
+  });
 
   return (
     <div className={cn('space-y-2', className)}>
       <div className="relative w-full rounded-full overflow-hidden" style={{ height }}>
-        {segments.map((segment, index) => {
-          const segmentPercentage = (segment.value / total) * 100;
-          const leftPosition = accumulatedWidth;
-          accumulatedWidth += segmentPercentage;
-
-          const hasEnoughSpace = segmentPercentage > 12;
+        {computedSegments.map((segment, index) => {
+          const hasEnoughSpace = segment.segmentPercentage > 12;
           const showLabel = showValues && segment.value > 0 && hasEnoughSpace;
 
           return (
@@ -48,8 +55,8 @@ export function SegmentedProgressBar({
               key={index}
               className={cn('absolute inset-y-0 rounded-full flex items-center justify-center', segment.color)}
               style={{
-                left: `${leftPosition}%`,
-                width: `${segmentPercentage}%`,
+                left: `${segment.leftPosition}%`,
+                width: `${segment.segmentPercentage}%`,
               }}
             >
               {showLabel && (
@@ -65,4 +72,3 @@ export function SegmentedProgressBar({
     </div>
   );
 }
-

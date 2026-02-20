@@ -20,7 +20,7 @@ interface ResponsiveTableProps<T> {
   mobileCardSubtitle?: (row: T) => ReactNode;
 }
 
-export function ResponsiveTable<T extends Record<string, any>>({
+export function ResponsiveTable<T>({
   data,
   columns,
   keyExtractor,
@@ -53,25 +53,29 @@ export function ResponsiveTable<T extends Record<string, any>>({
               )}
             </CardHeader>
             <CardContent className="space-y-3">
-              {columns.map((column, index) => {
-                const value =
-                  typeof column.accessor === 'function'
-                    ? column.accessor(row)
-                    : row[column.accessor];
-                
-                if (value === null || value === undefined) return null;
+                {columns.map((column, index) => {
+                  const accessor = column.accessor;
+                  const isFunctionAccessor = typeof accessor === 'function';
+                  const rawValue = isFunctionAccessor
+                    ? accessor(row)
+                    : row[accessor as keyof T];
+                  const displayValue = isFunctionAccessor
+                    ? (rawValue as ReactNode)
+                    : String(rawValue ?? '');
+                  
+                  if (!displayValue) return null;
 
-                return (
-                  <div key={index} className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-gray-600">
-                      {column.header}:
-                    </span>
-                    <span className="text-sm text-right flex-1 ml-4">
-                      {value}
-                    </span>
-                  </div>
-                );
-              })}
+                  return (
+                    <div key={index} className="flex justify-between items-start">
+                      <span className="text-sm font-medium text-gray-600">
+                        {column.header}:
+                      </span>
+                      <span className="text-sm text-right flex-1 ml-4">
+                        {displayValue}
+                      </span>
+                    </div>
+                  );
+                })}
               {actions && (
                 <div className="pt-3 border-t flex justify-end gap-2">
                   {actions(row)}
@@ -111,14 +115,18 @@ export function ResponsiveTable<T extends Record<string, any>>({
             data.map((row) => (
               <TableRow key={keyExtractor(row)}>
                 {columns.map((column, index) => {
-                  const value =
-                    typeof column.accessor === 'function'
-                      ? column.accessor(row)
-                      : row[column.accessor];
+                  const accessor = column.accessor;
+                  const isFunctionAccessor = typeof accessor === 'function';
+                  const rawValue = isFunctionAccessor
+                    ? accessor(row)
+                    : row[accessor as keyof T];
+                  const displayValue = isFunctionAccessor
+                    ? (rawValue as ReactNode)
+                    : String(rawValue ?? '');
                   
                   return (
                     <TableCell key={index} className={column.className}>
-                      {value}
+                      {displayValue}
                     </TableCell>
                   );
                 })}
@@ -133,4 +141,3 @@ export function ResponsiveTable<T extends Record<string, any>>({
     </div>
   );
 }
-

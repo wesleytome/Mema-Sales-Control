@@ -1,5 +1,5 @@
 // Componente de select com busca e scroll infinito para compradores
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useBuyers } from '@/hooks/useBuyers';
 import { Button } from './button';
 import { Input } from './input';
@@ -39,10 +39,10 @@ export function BuyerSelect({ value, onChange, placeholder = 'Selecione um compr
   
   const selectedBuyer = buyers?.find((b) => b.id === value);
   
-  // Reset page quando busca muda
-  useEffect(() => {
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
     setPage(1);
-  }, [search]);
+  };
   
   // Intersection Observer para scroll infinito
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -80,12 +80,12 @@ export function BuyerSelect({ value, onChange, placeholder = 'Selecione um compr
       <PopoverContent className="w-[400px] p-0" align="start">
         <div className="flex flex-col">
           <div className="flex items-center border-b px-3">
-            <Input
-              placeholder="Buscar por nome, CPF ou telefone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 border-0 focus-visible:ring-0"
-            />
+              <Input
+                placeholder="Buscar por nome, CPF ou telefone..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-9 border-0 focus-visible:ring-0"
+              />
           </div>
           <div className="max-h-[300px] overflow-y-auto">
             {isLoading ? (
@@ -160,4 +160,3 @@ export function BuyerSelect({ value, onChange, placeholder = 'Selecione um compr
     </Popover>
   );
 }
-

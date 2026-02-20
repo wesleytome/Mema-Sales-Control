@@ -1,6 +1,6 @@
 // Formulário de venda com parcelas híbridas
 import { useState, useEffect, useRef } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useFieldArray, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addMonths } from 'date-fns';
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BuyerSelect } from '@/components/ui/buyer-select';
 import { Textarea } from '@/components/ui/textarea';
 import { PhoneInput } from '@/components/ui/phone-input';
-import { CPFInput, validateCPF } from '@/components/ui/cpf-input';
+import { CPFInput } from '@/components/ui/cpf-input';
 import { CEPInput } from '@/components/ui/cep-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, CalendarIcon, UserPlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { validateCPF } from '@/lib/cpf';
 import { DELIVERY_STATUS_OPTIONS, BRAZILIAN_STATES } from '@/lib/constants';
 
 const buyerSchema = z.object({
@@ -97,9 +98,8 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const updateSale = useUpdateSale();
   const createBuyer = useCreateBuyer();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<SaleFormData>({
-    resolver: zodResolver(baseSaleSchema) as any,
+    resolver: zodResolver(baseSaleSchema) as Resolver<SaleFormData>,
     defaultValues: {
       buyer_id: sale?.buyer_id || '',
       product_description: sale?.product_description || '',
@@ -1247,4 +1247,3 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
     </div>
   );
 }
-

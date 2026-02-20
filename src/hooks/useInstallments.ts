@@ -1,8 +1,14 @@
 // Hook para gerenciar parcelas
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Installment } from '@/types';
+import type { Installment, Sale } from '@/types';
 import { toast } from 'sonner';
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro inesperado';
+};
 
 export function useInstallments(saleId?: string) {
   return useQuery({
@@ -32,9 +38,9 @@ export function useInstallments(saleId?: string) {
       if (error) throw error;
       
       // Garantir que os dados da venda estejam acessíveis
-      return (data || []).map((item: any) => ({
+      return (data || []).map((item) => ({
         ...item,
-        sale: item.sale || null,
+        sale: (item.sale ?? null) as Sale | null,
       })) as Installment[];
     },
   });
@@ -64,8 +70,8 @@ export function useUpdateInstallment() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       toast.success('Parcela atualizada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao atualizar parcela');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao atualizar parcela');
     },
   });
 }
@@ -89,8 +95,8 @@ export function useCreateInstallment() {
       queryClient.invalidateQueries({ queryKey: ['sales', data.sale_id] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao criar parcela');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao criar parcela');
     },
   });
 }
@@ -108,9 +114,8 @@ export function useDeleteInstallment() {
       queryClient.invalidateQueries({ queryKey: ['installments'] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erro ao excluir parcela');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || 'Erro ao excluir parcela');
     },
   });
 }
-

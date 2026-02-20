@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Pencil, MapPin, ExternalLink, User, Phone, Mail, Hash, Home } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Buyer } from '@/types';
 
 // Funções auxiliares para formatação
 const formatCPF = (cpf: string): string => {
@@ -28,7 +29,7 @@ const formatCEP = (cep: string): string => {
   return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
 };
 
-const buildGoogleMapsUrl = (buyer: any): string => {
+const buildGoogleMapsUrl = (buyer: Buyer): string => {
   const parts: string[] = [];
   
   if (buyer.address) parts.push(buyer.address);
@@ -211,4 +212,3 @@ export function BuyerDetail() {
     </div>
   );
 }
-

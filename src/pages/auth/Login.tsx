@@ -1,7 +1,7 @@
 // Página de login — Mobile First, premium
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,8 +24,10 @@ export function Login() {
     try {
       await signIn(email, password);
       navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export function Login() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
-                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
