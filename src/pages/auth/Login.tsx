@@ -37,6 +37,7 @@ export function Login() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
       <div className="absolute inset-0 bg-background" />
+      <div className="absolute inset-0 purple-theme-backdrop" />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-sm space-y-6">

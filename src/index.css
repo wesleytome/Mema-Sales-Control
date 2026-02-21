@@ -63,27 +63,51 @@
   --box-shadow-widget: 0px 5px 1.5px -4px rgba(8, 8, 8, 0.17), 0px 6px 4px -4px rgba(8, 8, 8, 0.12);
 }
 
-.dark,
 [data-theme="dark"] {
+  --primary-05: var(--primary-01);
   --backgrounds-surface1: var(--shade-02);
   --backgrounds-surface2: var(--shade-03);
-  --backgrounds-surface3: rgba(16, 16, 16, 0.5);
+  --backgrounds-surface3: rgba(25, 25, 25, 0.6);
   --backgrounds-pop: var(--shade-04);
-  --backgrounds-highlight: #2a2a2c;
-  --backgrounds-depth2: #1f1f22;
+  --backgrounds-highlight: #262628;
+  --backgrounds-depth2: #1e1e20;
   --backgrounds-dark1: var(--shade-08);
   --backgrounds-dark2: var(--shade-10);
   --text-primary: var(--shade-09);
   --text-secondary: var(--shade-07);
-  --stroke-subtle: rgba(30, 30, 30, 0.25);
-  --stroke-highlight: rgba(114, 114, 114, 0.5);
+  --stroke-subtle: rgba(114, 114, 114, 0.22);
+  --stroke-highlight: rgba(123, 123, 123, 0.45);
   --stroke-stroke2: #3a3a3d;
-  --button-primary-bg: #f1f1f1;
-  --button-primary-fg: #1f1f22;
+  --button-primary-bg: var(--shade-09);
+  --button-primary-fg: var(--shade-02);
   --button-secondary-bg: #2a2a2c;
   --button-secondary-fg: #e9e9eb;
   --box-shadow-depth: 0px 2.15px 0.5px -2px rgba(0, 0, 0, 0.25), 0px 24px 24px -16px rgba(8, 8, 8, 0.06),
     0px 6px 13px 0px rgba(8, 8, 8, 0.08);
+  --box-shadow-widget: 0px 5px 1.5px -4px rgba(0, 0, 0, 0.3), 0px 8px 18px -14px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="purple"] {
+  --backgrounds-surface1: #0b1231;
+  --backgrounds-surface2: rgba(66, 74, 128, 0.34);
+  --backgrounds-surface3: rgba(80, 89, 153, 0.36);
+  --backgrounds-pop: rgba(35, 43, 84, 0.82);
+  --backgrounds-highlight: rgba(129, 141, 205, 0.22);
+  --backgrounds-depth2: rgba(33, 40, 80, 0.88);
+  --backgrounds-dark1: #e8eeff;
+  --backgrounds-dark2: #f8faff;
+  --text-primary: #f2f6ff;
+  --text-secondary: #a9b3d9;
+  --stroke-subtle: rgba(150, 165, 236, 0.2);
+  --stroke-highlight: rgba(170, 184, 248, 0.38);
+  --stroke-stroke2: rgba(142, 157, 227, 0.45);
+  --button-primary-bg: #eef2ff;
+  --button-primary-fg: #1d2550;
+  --button-secondary-bg: rgba(97, 107, 170, 0.28);
+  --button-secondary-fg: #e8eeff;
+  --box-shadow-depth: 0px 2.15px 0.5px -2px rgba(0, 0, 0, 0.32), 0px 26px 40px -28px rgba(13, 18, 52, 0.85),
+    0px 10px 24px -12px rgba(4, 8, 26, 0.7);
+  --box-shadow-widget: 0px 8px 24px -16px rgba(7, 12, 35, 0.7), 0px 12px 22px -20px rgba(4, 8, 23, 0.9);
 }
 
 @theme inline {
@@ -196,6 +220,74 @@
 }
 
 @layer components {
+  .purple-theme-backdrop {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--default-transition-duration);
+  }
+
+  [data-theme="purple"] .purple-theme-backdrop {
+    opacity: 1;
+    background:
+      radial-gradient(58rem 34rem at 8% 92%, rgba(104, 77, 255, 0.34) 0%, transparent 65%),
+      radial-gradient(54rem 36rem at 85% 10%, rgba(36, 115, 255, 0.3) 0%, transparent 68%),
+      radial-gradient(38rem 28rem at 48% 56%, rgba(113, 77, 255, 0.16) 0%, transparent 72%),
+      linear-gradient(120deg, #050c22 6%, #0b1638 48%, #1f2a6a 100%);
+  }
+
+  [data-theme="purple"] .purple-theme-surface {
+    background: color-mix(in oklab, var(--backgrounds-surface2) 85%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  [data-theme="purple"] .purple-theme-border {
+    border-color: color-mix(in oklab, #c2cffd 20%, transparent);
+  }
+
+  [data-theme="dark"] :is(
+    .text-orange-500,
+    .text-orange-600,
+    .text-orange-700,
+    .text-orange-800,
+    .text-yellow-600,
+    .text-yellow-700,
+    .text-yellow-800,
+    .text-amber-600,
+    .text-amber-700,
+    .text-amber-800
+  ) {
+    color: color-mix(in oklab, var(--shade-09) 76%, var(--primary-01) 24%) !important;
+  }
+
+  [data-theme="dark"] :is(
+    .bg-orange-50,
+    .bg-orange-50\/30,
+    .bg-orange-100,
+    .bg-yellow-50,
+    .bg-yellow-50\/40,
+    .bg-yellow-50\/50,
+    .bg-yellow-100,
+    .bg-yellow-600,
+    .bg-amber-50,
+    .bg-amber-100
+  ) {
+    background-color: color-mix(in oklab, var(--primary-01) 16%, transparent) !important;
+  }
+
+  [data-theme="dark"] :is(
+    .border-orange-200,
+    .border-yellow-200,
+    .border-yellow-300,
+    .border-amber-200\/70
+  ) {
+    border-color: color-mix(in oklab, var(--primary-01) 34%, transparent) !important;
+  }
+
+  [data-theme="dark"] .status-warning {
+    color: color-mix(in oklab, var(--shade-09) 76%, var(--primary-01) 24%);
+    background: color-mix(in oklab, var(--primary-01) 16%, transparent);
+  }
+
   .glass {
     background: color-mix(in oklab, var(--backgrounds-surface2) 92%, transparent);
     backdrop-filter: blur(8px);
@@ -224,7 +316,7 @@
   }
 
   .dark .icon-chip.logo-tile,
-  [data-theme="dark"] .icon-chip.logo-tile {
+  [data-theme="purple"] .icon-chip.logo-tile {
     background: var(--shade-05);
     border-color: color-mix(in oklab, var(--shade-04) 70%, transparent);
     color: var(--shade-10);

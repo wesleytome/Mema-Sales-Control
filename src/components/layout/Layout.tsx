@@ -1,11 +1,11 @@
 // Layout principal da aplicação — Mobile First
 import { Sidebar } from './Sidebar';
 import { BottomTabBar } from './BottomTabBar';
+import { ThemeSelector } from './ThemeSelector';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useAuth } from '@/contexts/useAuth';
-import { useTheme } from '@/contexts/useTheme';
 import { cn } from '@/lib/utils';
-import { Sun, Moon, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/logo-mark';
 import {
@@ -15,22 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-function ThemeToggleButton() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label="Alternar tema"
-    >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
-  );
-}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isCollapsed } = useSidebar();
@@ -45,24 +29,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="relative flex h-screen overflow-hidden bg-background">
+      <div className="absolute inset-0 purple-theme-backdrop" />
+
       {/* Sidebar desktop */}
-      <div className="hidden md:block">
+      <div className="relative z-20 hidden md:block">
         <Sidebar />
       </div>
 
       {/* Spacer for fixed sidebar */}
       <div
         className={cn(
-          'hidden md:block transition-all duration-300 shrink-0',
+          'relative z-10 hidden md:block transition-all duration-300 shrink-0',
           isCollapsed ? 'w-16' : 'w-64',
         )}
       />
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+      <main className="relative z-10 flex flex-1 min-w-0 flex-col overflow-y-auto">
         {/* Mobile header */}
-        <header className="md:hidden sticky top-0 z-40 w-full border-b border-border/60 glass shadow-sm">
+        <header className="md:hidden sticky top-0 z-40 w-full border-b border-border/60 glass purple-theme-border purple-theme-surface shadow-sm">
           <div className="flex h-14 items-center px-4 gap-3">
             <div className="icon-chip logo-tile !w-8 !h-8 !rounded-lg shrink-0">
               <LogoMark className="h-4 w-4" />
@@ -78,7 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Actions */}
             <div className="flex items-center gap-1 shrink-0">
-              <ThemeToggleButton />
+              <ThemeSelector compact className="text-muted-foreground hover:text-foreground" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

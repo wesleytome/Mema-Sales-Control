@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/useAuth';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
+import { ForceTheme } from '@/components/layout/ForceTheme';
 import { Login } from '@/pages/auth/Login';
 import { Dashboard } from '@/pages/admin/Dashboard';
 import { Buyers } from '@/pages/admin/Buyers';
@@ -32,10 +33,10 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600">Carregando...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary"></div>
+          <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
         </div>
       </div>
     );
@@ -46,19 +47,35 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route
         path="/customer/:saleId"
-        element={<CustomerHome />}
+        element={
+          <ForceTheme theme="light">
+            <CustomerHome />
+          </ForceTheme>
+        }
       />
       <Route
         path="/user/:saleId"
-        element={<CustomerHome />}
+        element={
+          <ForceTheme theme="light">
+            <CustomerHome />
+          </ForceTheme>
+        }
       />
       <Route
         path="/customer/:seedSaleId/compra/:saleId"
-        element={<PaymentUpload />}
+        element={
+          <ForceTheme theme="light">
+            <PaymentUpload />
+          </ForceTheme>
+        }
       />
       <Route
         path="/user/:seedSaleId/compra/:saleId"
-        element={<PaymentUpload />}
+        element={
+          <ForceTheme theme="light">
+            <PaymentUpload />
+          </ForceTheme>
+        }
       />
       <Route path="/pay/:saleId" element={<LegacyPayRedirect />} />
       <Route

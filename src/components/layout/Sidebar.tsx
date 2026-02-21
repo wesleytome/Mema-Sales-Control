@@ -8,11 +8,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
-import { useTheme } from '@/contexts/useTheme';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/useSidebar';
@@ -23,6 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { LogoMark } from '@/components/ui/logo-mark';
+import { ThemeSelector } from './ThemeSelector';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,8 +32,6 @@ const navigation = [
 export function Sidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
   const { isCollapsed, toggleSidebar } = useSidebar();
 
   const handleSignOut = async () => {
@@ -156,30 +152,16 @@ export function Sidebar() {
         <TooltipProvider>
           {/* Theme toggle */}
           {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                >
-                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{isDark ? 'Modo Claro' : 'Modo Escuro'}</p>
-              </TooltipContent>
-            </Tooltip>
+            <ThemeSelector
+              compact
+              align="end"
+              className="w-full text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            />
           ) : (
-            <Button
-              variant="ghost"
+            <ThemeSelector
+              align="end"
               className="w-full justify-start text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            >
-              {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-              <span>{isDark ? 'Modo Claro' : 'Modo Escuro'}</span>
-            </Button>
+            />
           )}
 
           {/* Sign out */}

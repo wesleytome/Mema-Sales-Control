@@ -241,88 +241,98 @@ export function SaleDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="space-y-3 sm:space-y-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+            <CardTitle className="text-base font-semibold text-gray-600 flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               Valor de Venda
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{formatBRL(sale.sale_price)}</div>
+            <div className="text-3xl sm:text-4xl font-bold">{formatBRL(sale.sale_price)}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              Total Pago
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-green-600">
-              {formatBRL(totalPaid)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={totalPending > 0 ? 'border-orange-200 bg-orange-50/30' : ''}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-orange-600" />
-              Pendente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-orange-600">
-              {formatBRL(totalPending)}
-            </div>
-          </CardContent>
-        </Card>
-
-        {sale.purchase_price && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Valor de Compra
+                <DollarSign className="h-4 w-4 text-green-600" />
+                Total Pago
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">
-                {formatBRL(sale.purchase_price)}
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
+                {formatBRL(totalPaid)}
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {profit !== null && (
-          <Card>
+          <Card className={totalPending > 0 ? 'border-orange-200 bg-orange-50/30' : ''}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <DollarSign
-                  className={`h-4 w-4 ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                />
-                Lucro
+                <DollarSign className="h-4 w-4 text-orange-600" />
+                Pendente
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div
-                className={`text-xl sm:text-2xl font-bold ${
-                  profit >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {formatBRL(profit)}
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">
+                {formatBRL(totalPending)}
               </div>
-              {sale.purchase_price && sale.purchase_price > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Margem: {((profit / sale.purchase_price) * 100).toFixed(1)}%
-                </div>
-              )}
             </CardContent>
           </Card>
+        </div>
+
+        {(sale.purchase_price || profit !== null) && (
+          <div
+            className={`grid gap-3 sm:gap-4 ${
+              sale.purchase_price && profit !== null ? 'grid-cols-2' : 'grid-cols-1'
+            }`}
+          >
+            {sale.purchase_price && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Custo do produto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl sm:text-2xl font-bold">
+                    {formatBRL(sale.purchase_price)}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {profit !== null && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                    <DollarSign
+                      className={`h-4 w-4 ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    />
+                    Lucro
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className={`text-xl sm:text-2xl font-bold ${
+                      profit >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {formatBRL(profit)}
+                  </div>
+                  {sale.purchase_price && sale.purchase_price > 0 && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Margem: {((profit / sale.purchase_price) * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
       </div>
 
