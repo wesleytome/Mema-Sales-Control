@@ -77,6 +77,16 @@ export function SaleDetail() {
     return sale.installments.find((inst) => inst.status !== 'paid') || null;
   }, [sale]);
 
+  const flexibleInstallment = useMemo(() => {
+    if (!sale || sale.payment_mode !== 'flexible') return null;
+
+    const sortedInstallments = [...sale.installments].sort(
+      (a, b) => b.installment_number - a.installment_number,
+    );
+
+    return sortedInstallments.find((inst) => inst.status !== 'paid') || sortedInstallments[0] || null;
+  }, [sale]);
+
   const handleOpenSellerPayment = (installment: Installment) => {
     const remaining = installment.amount - installment.paid_amount;
     setSellerPaymentTarget(installment);
@@ -87,7 +97,7 @@ export function SaleDetail() {
 
   const handleOpenSellerPaymentFlexible = () => {
     if (!sale) return;
-    const inst = sale.installments[0];
+    const inst = flexibleInstallment;
     if (!inst) return;
     setSellerPaymentTarget(inst);
     setSellerPaymentAmount(totalPending);
@@ -516,7 +526,13 @@ export function SaleDetail() {
             </div>
           </CardHeader>
           <CardContent>
-            <FlexiblePaymentSection installment={sale.installments[0]} />
+            {flexibleInstallment ? (
+              <FlexiblePaymentSection installment={flexibleInstallment} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma parcela disponível para o modo flexível.
+              </p>
+            )}
           </CardContent>
         </Card>
       ) : (
