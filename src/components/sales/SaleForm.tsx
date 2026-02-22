@@ -25,10 +25,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Trash2, CalendarIcon, UserPlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { validateCPF } from '@/lib/cpf';
 import { DELIVERY_STATUS_OPTIONS, BRAZILIAN_STATES } from '@/lib/constants';
+import { toast } from 'sonner';
 
 const buyerSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -62,6 +66,8 @@ const baseSaleSchema = z.object({
       amount: z.number().min(0.01),
       due_date: z.date().nullable(),
       installment_number: z.number(),
+      original_id: z.string().optional(),
+      paid_amount: z.number().min(0).optional(),
     })
   ),
 }).refine(
@@ -94,6 +100,15 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const [parcelMode, setParcelMode] = useState<'auto' | 'manual'>('auto');
   const [numParcels, setNumParcels] = useState(1);
   const [showBuyerForm, setShowBuyerForm] = useState(false);
+  const [editPaidInstallmentIds, setEditPaidInstallmentIds] = useState<string[]>([]);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [adjustmentConfirmText, setAdjustmentConfirmText] = useState('');
+  const [pendingAdjustment, setPendingAdjustment] = useState<{
+    type: 'edit' | 'delete';
+    index: number;
+    installmentNumber: number;
+    originalId?: string;
+  } | null>(null);
   useBuyers(); // Pre-fetch buyers para o BuyerSelect
   const createSale = useCreateSale();
   const updateSale = useUpdateSale();
@@ -114,6 +129,8 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         amount: inst.amount,
         due_date: inst.due_date ? new Date(inst.due_date) : null,
         installment_number: inst.installment_number,
+        original_id: inst.id,
+        paid_amount: inst.paid_amount,
       })) || [],
     },
   });
@@ -176,9 +193,12 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           amount: inst.amount,
           due_date: inst.due_date ? new Date(inst.due_date) : null,
           installment_number: inst.installment_number,
+          original_id: inst.id,
+          paid_amount: inst.paid_amount,
         })) || [],
       });
       setPaymentMode(sale.payment_mode || 'fixed');
+      setEditPaidInstallmentIds([]);
     } else {
       form.reset({
         buyer_id: '',
@@ -192,6 +212,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         installments: [],
       });
       setPaymentMode('fixed');
+      setEditPaidInstallmentIds([]);
     }
   }, [sale, form]);
 
@@ -204,7 +225,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
     };
   }, []);
 
-  const { fields, append } = useFieldArray({
+  const { fields } = useFieldArray({
     control: form.control,
     name: 'installments',
   });
@@ -212,6 +233,113 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   const salePrice = form.watch('sale_price');
   const saleDate = form.watch('sale_date');
   const installments = form.watch('installments');
+  const hasAnyPaidInstallment = installments.some((inst) => (inst.paid_amount || 0) > 0);
+  const originalTotalPaid = sale?.installments.reduce((sum, inst) => sum + inst.paid_amount, 0) || 0;
+  const isFullyPaidSale = Boolean(isEditMode && sale && originalTotalPaid >= sale.sale_price);
+
+  const isInstallmentPaid = (installment: SaleFormData['installments'][number]) =>
+    (installment.paid_amount || 0) > 0;
+
+  const isPaidInstallmentEditable = (installment: SaleFormData['installments'][number]) => {
+    if (!isInstallmentPaid(installment)) return true;
+    if (!installment.original_id) return false;
+    return editPaidInstallmentIds.includes(installment.original_id);
+  };
+
+  const getLockedInstallmentIndexes = (
+    values: SaleFormData['installments'],
+    options?: { ignoreIndex?: number },
+  ) => {
+    const lockedIndexes = new Set<number>();
+    values.forEach((installment, idx) => {
+      if (options?.ignoreIndex === idx) return;
+      if (isInstallmentPaid(installment) && !isPaidInstallmentEditable(installment)) {
+        lockedIndexes.add(idx);
+      }
+    });
+    return lockedIndexes;
+  };
+
+  const rebalanceEditableInstallments = (
+    values: SaleFormData['installments'],
+    totalSalePrice: number,
+  ): { installments: SaleFormData['installments']; error: string | null } => {
+    if (!values.length) {
+      return { installments: values, error: null };
+    }
+
+    const lockedIndexes = getLockedInstallmentIndexes(values);
+    const editableIndexes = values
+      .map((_, index) => index)
+      .filter((index) => !lockedIndexes.has(index));
+
+    const fixedAmount = values.reduce(
+      (sum, inst, index) => (lockedIndexes.has(index) ? sum + inst.amount : sum),
+      0,
+    );
+    const targetEditableAmount = totalSalePrice - fixedAmount;
+
+    if (editableIndexes.length === 0) {
+      const diff = totalSalePrice - fixedAmount;
+      if (Math.abs(diff) < 0.01) {
+        return { installments: values, error: null };
+      }
+      return {
+        installments: values,
+        error:
+          'Não há parcelas editáveis para redistribuir. Libere uma parcela paga para ajuste ou revise o valor total.',
+      };
+    }
+
+    if (targetEditableAmount < editableIndexes.length * 0.01) {
+      return {
+        installments: values,
+        error: `Saldo insuficiente para manter ${editableIndexes.length} parcelas editáveis com valor mínimo.`,
+      };
+    }
+
+    const sumEditableCurrent = editableIndexes.reduce((sum, index) => sum + values[index].amount, 0);
+    const updatedInstallments = [...values];
+
+    if (sumEditableCurrent > 0.01) {
+      editableIndexes.forEach((index) => {
+        const proportion = values[index].amount / sumEditableCurrent;
+        updatedInstallments[index] = {
+          ...values[index],
+          amount: Math.max(0.01, targetEditableAmount * proportion),
+        };
+      });
+    } else {
+      const amountPerInstallment = targetEditableAmount / editableIndexes.length;
+      editableIndexes.forEach((index) => {
+        updatedInstallments[index] = {
+          ...values[index],
+          amount: Math.max(0.01, amountPerInstallment),
+        };
+      });
+    }
+
+    const finalSum = updatedInstallments.reduce((sum, inst) => sum + inst.amount, 0);
+    const finalDiff = totalSalePrice - finalSum;
+
+    if (Math.abs(finalDiff) >= 0.01) {
+      const lastEditableIndex = editableIndexes[editableIndexes.length - 1];
+      const adjustedLastAmount = updatedInstallments[lastEditableIndex].amount + finalDiff;
+      if (adjustedLastAmount < 0.01) {
+        return {
+          installments: values,
+          error: 'Não foi possível redistribuir mantendo os limites mínimos das parcelas.',
+        };
+      }
+
+      updatedInstallments[lastEditableIndex] = {
+        ...updatedInstallments[lastEditableIndex],
+        amount: adjustedLastAmount,
+      };
+    }
+
+    return { installments: updatedInstallments, error: null };
+  };
 
   // Sincroniza o número de parcelas com a quantidade real
   useEffect(() => {
@@ -231,6 +359,10 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
   }, [isEditMode, sale]);
 
   const handleAutoSplit = () => {
+    if (isEditMode && hasAnyPaidInstallment) {
+      return;
+    }
+
     if (!salePrice || salePrice <= 0 || !numParcels || numParcels < 1) {
       return;
     }
@@ -243,56 +375,56 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         amount: parcelAmount,
         due_date: addMonths(saleDate || new Date(), i + 1),
         installment_number: i + 1,
+        paid_amount: 0,
       });
     }
 
+    form.clearErrors('installments');
     form.setValue('installments', installments);
   };
 
   const handleAddManualParcel = () => {
     const currentInstallments = form.getValues('installments');
-    const salePrice = form.getValues('sale_price');
     const nextNumber = currentInstallments.length + 1;
-    
-    // Calcula o valor restante
-    const sumOfCurrent = currentInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-    const remainingAmount = salePrice - sumOfCurrent;
-    
-    // Se há valor restante, distribui entre todas as parcelas (incluindo a nova)
-    let newAmount = 0;
-    if (remainingAmount > 0 && currentInstallments.length > 0) {
-      // Distribui o restante igualmente entre todas as parcelas (incluindo a nova)
-      const amountPerParcel = remainingAmount / (currentInstallments.length + 1);
-      newAmount = amountPerParcel;
-      
-      // Ajusta as parcelas existentes
-      const updatedInstallments = currentInstallments.map((inst) => ({
-        ...inst,
-        amount: inst.amount + amountPerParcel,
-      }));
-      form.setValue('installments', updatedInstallments);
-    } else if (remainingAmount > 0) {
-      newAmount = remainingAmount;
-    } else if (salePrice > 0 && currentInstallments.length === 0) {
-      // Se não há parcelas, divide o total igualmente (será ajustado depois)
-      newAmount = salePrice;
+    const salePriceValue = form.getValues('sale_price');
+
+    const withNewInstallment = [
+      ...currentInstallments,
+      {
+        amount: 0.01,
+        due_date: addMonths(saleDate || new Date(), nextNumber),
+        installment_number: nextNumber,
+        paid_amount: 0,
+      },
+    ];
+
+    const { installments: rebalancedInstallments, error } = rebalanceEditableInstallments(
+      withNewInstallment,
+      salePriceValue,
+    );
+
+    if (error) {
+      form.setError('installments', {
+        type: 'manual',
+        message: error,
+      });
+      return;
     }
-    
-    append({
-      amount: newAmount,
-      due_date: addMonths(saleDate || new Date(), nextNumber),
-      installment_number: nextNumber,
-    });
+
+    form.clearErrors('installments');
+    form.setValue('installments', rebalancedInstallments);
   };
 
-  const handleRemoveInstallment = (index: number) => {
+  const removeInstallmentAndRebalance = (index: number) => {
     const currentInstallments = form.getValues('installments');
-    const salePrice = form.getValues('sale_price');
+    const salePriceValue = form.getValues('sale_price');
     
     if (currentInstallments.length <= 1) {
       // Não permite remover se só há uma parcela
       return;
     }
+
+    const removedInstallment = currentInstallments[index];
     
     // Remove a parcela da lista
     const remainingInstallments = currentInstallments.filter((_, i) => i !== index);
@@ -302,47 +434,40 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       ...inst,
       installment_number: i + 1,
     }));
-    
-    // Calcula a soma atual das parcelas restantes
-    const sumOfRemaining = renumberedInstallments.reduce(
-      (sum, inst) => sum + inst.amount,
-      0
+
+    const { installments: rebalancedInstallments, error } = rebalanceEditableInstallments(
+      renumberedInstallments,
+      salePriceValue,
     );
-    
-    // Calcula a diferença que precisa ser redistribuída
-    const difference = salePrice - sumOfRemaining;
-    
-    if (Math.abs(difference) < 0.01) {
-      // Se não há diferença significativa, apenas remove e renumerar
-      form.setValue('installments', renumberedInstallments);
+
+    if (error) {
+      form.setError('installments', {
+        type: 'manual',
+        message: error,
+      });
       return;
     }
-    
-    // Redistribui a diferença proporcionalmente entre as parcelas restantes
-    if (renumberedInstallments.length > 0) {
-      const sumOfOthers = renumberedInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-      
-      if (sumOfOthers > 0) {
-        // Distribui proporcionalmente
-        const updatedInstallments = renumberedInstallments.map((inst) => {
-          const proportion = inst.amount / sumOfOthers;
-          const addition = difference * proportion;
-          return {
-            ...inst,
-            amount: Math.max(0.01, inst.amount + addition),
-          };
-        });
-        form.setValue('installments', updatedInstallments);
-      } else {
-        // Se não há outras parcelas com valor, distribui igualmente
-        const amountPerParcel = salePrice / renumberedInstallments.length;
-        const updatedInstallments = renumberedInstallments.map((inst) => ({
-          ...inst,
-          amount: amountPerParcel,
-        }));
-        form.setValue('installments', updatedInstallments);
-      }
+
+    if (removedInstallment.original_id) {
+      setEditPaidInstallmentIds((prev) => prev.filter((id) => id !== removedInstallment.original_id));
     }
+
+    form.clearErrors('installments');
+    form.setValue('installments', rebalancedInstallments);
+  };
+
+  const handleRemoveInstallment = (index: number) => {
+    const currentInstallments = form.getValues('installments');
+    const installment = currentInstallments[index];
+    if (!installment) return;
+
+    const isPaid = isInstallmentPaid(installment);
+    if (isPaid) {
+      openPaidInstallmentAdjustmentDialog('delete', index);
+      return;
+    }
+
+    removeInstallmentAndRebalance(index);
   };
 
   // Ref para rastrear qual campo está sendo editado
@@ -369,109 +494,151 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
     // Usa um pequeno delay para garantir que o valor foi atualizado
     timeoutRef.current = setTimeout(() => {
       const currentInstallments = form.getValues('installments');
-      const salePrice = form.getValues('sale_price');
+      const salePriceValue = form.getValues('sale_price');
       
-      if (!salePrice || salePrice <= 0) return;
+      if (!salePriceValue || salePriceValue <= 0) return;
       
-      // NOVA LÓGICA: Não altera parcelas anteriores, apenas posteriores
-      
-      // 1) Soma das parcelas ANTERIORES à alterada (não podem ser tocadas)
+      // Não altera parcelas anteriores e preserva parcelas pagas bloqueadas
       const previousInstallments = currentInstallments.slice(0, index);
       const sumOfPrevious = previousInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-      
-      // 2) Valor da parcela alterada (mantém o que o usuário digitou)
       const changedAmount = currentInstallments[index].amount;
-      
-      // 3) Saldo restante para as parcelas POSTERIORES
-      const remainingForNext = salePrice - sumOfPrevious - changedAmount;
-      
-      // 4) Parcelas POSTERIORES à alterada (serão recalculadas)
-      const nextInstallments = currentInstallments.slice(index + 1);
-      
-      // Validação: se não há saldo suficiente para as próximas parcelas
-      if (remainingForNext < 0) {
+
+      const lockedIndexes = getLockedInstallmentIndexes(currentInstallments, { ignoreIndex: index });
+      const nextIndexes = currentInstallments
+        .map((_, i) => i)
+        .filter((i) => i > index);
+      const lockedNextIndexes = nextIndexes.filter((i) => lockedIndexes.has(i));
+      const editableNextIndexes = nextIndexes.filter((i) => !lockedIndexes.has(i));
+      const lockedNextSum = lockedNextIndexes.reduce(
+        (sum, i) => sum + currentInstallments[i].amount,
+        0,
+      );
+
+      const remainingForNextEditable = salePriceValue - sumOfPrevious - changedAmount - lockedNextSum;
+
+      if (remainingForNextEditable < 0) {
         form.setError(`installments.${index}.amount`, {
           type: 'manual',
-          message: `Valor excede o saldo disponível (máx: R$ ${(salePrice - sumOfPrevious).toFixed(2)})`,
+          message: `Valor excede o saldo disponível (máx: R$ ${(salePriceValue - sumOfPrevious - lockedNextSum).toFixed(2)})`,
         });
         return;
       }
-      
-      // Se não há parcelas posteriores, apenas valida se o total bate
-      if (nextInstallments.length === 0) {
-        const totalSum = sumOfPrevious + changedAmount;
-        if (Math.abs(totalSum - salePrice) < 0.01) {
-          // Tudo certo, não precisa ajustar nada
+
+      if (editableNextIndexes.length === 0) {
+        const lockedAndPreviousSum = sumOfPrevious + changedAmount + lockedNextSum;
+        if (Math.abs(lockedAndPreviousSum - salePriceValue) < 0.01) {
           form.clearErrors(`installments.${index}.amount`);
           return;
-        } else {
-          // Última parcela e não bate o total
-          form.setError(`installments.${index}.amount`, {
-            type: 'manual',
-            message: `Valor deve totalizar R$ ${salePrice.toFixed(2)} (atual: R$ ${totalSum.toFixed(2)})`,
-          });
-          return;
         }
-      }
-      
-      // Se há parcelas posteriores mas o saldo é muito pequeno (< R$ 0.01 por parcela)
-      if (remainingForNext < nextInstallments.length * 0.01) {
+
         form.setError(`installments.${index}.amount`, {
           type: 'manual',
-          message: `Saldo insuficiente para ${nextInstallments.length} parcelas posteriores`,
+          message: `Valor deve totalizar R$ ${salePriceValue.toFixed(2)} (atual: R$ ${lockedAndPreviousSum.toFixed(2)})`,
         });
         return;
       }
-      
-      // 5) Redistribuir o saldo entre as parcelas posteriores
-      // Estratégia: proporcional aos valores atuais (se possível), senão igualmente
-      const sumOfNext = nextInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-      
+
+      if (remainingForNextEditable < editableNextIndexes.length * 0.01) {
+        form.setError(`installments.${index}.amount`, {
+          type: 'manual',
+          message: `Saldo insuficiente para ${editableNextIndexes.length} parcelas editáveis posteriores`,
+        });
+        return;
+      }
+
+      const sumOfEditableNext = editableNextIndexes.reduce(
+        (sum, i) => sum + currentInstallments[i].amount,
+        0,
+      );
       const updatedInstallments = [...currentInstallments];
-      
-      if (sumOfNext > 0.01) {
-        // Distribui proporcionalmente aos valores atuais
-        for (let i = index + 1; i < currentInstallments.length; i++) {
-          const proportion = currentInstallments[i].amount / sumOfNext;
-          const newAmount = remainingForNext * proportion;
+
+      if (sumOfEditableNext > 0.01) {
+        editableNextIndexes.forEach((i) => {
+          const proportion = currentInstallments[i].amount / sumOfEditableNext;
+          const newAmount = remainingForNextEditable * proportion;
           updatedInstallments[i] = {
             ...currentInstallments[i],
             amount: Math.max(0.01, newAmount),
           };
-        }
+        });
       } else {
-        // Distribui igualmente entre as parcelas posteriores
-        const amountPerNext = remainingForNext / nextInstallments.length;
-        for (let i = index + 1; i < currentInstallments.length; i++) {
+        const amountPerNext = remainingForNextEditable / editableNextIndexes.length;
+        editableNextIndexes.forEach((i) => {
           updatedInstallments[i] = {
             ...currentInstallments[i],
             amount: Math.max(0.01, amountPerNext),
           };
-        }
+        });
       }
-      
-      // Ajuste fino: garantir que a soma total seja exatamente o preço de venda
+
       const finalSum = updatedInstallments.reduce((sum, inst) => sum + inst.amount, 0);
-      const finalDiff = salePrice - finalSum;
-      
+      const finalDiff = salePriceValue - finalSum;
+
       if (Math.abs(finalDiff) >= 0.01) {
-        // Ajusta a última parcela para compensar erros de arredondamento
-        const lastIndex = updatedInstallments.length - 1;
-        updatedInstallments[lastIndex] = {
-          ...updatedInstallments[lastIndex],
-          amount: Math.max(0.01, updatedInstallments[lastIndex].amount + finalDiff),
+        const lastEditableNextIndex = editableNextIndexes[editableNextIndexes.length - 1];
+        const adjustedLastAmount = updatedInstallments[lastEditableNextIndex].amount + finalDiff;
+        if (adjustedLastAmount < 0.01) {
+          form.setError(`installments.${index}.amount`, {
+            type: 'manual',
+            message: 'Não foi possível redistribuir mantendo os limites mínimos.',
+          });
+          return;
+        }
+        updatedInstallments[lastEditableNextIndex] = {
+          ...updatedInstallments[lastEditableNextIndex],
+          amount: adjustedLastAmount,
         };
       }
       
-      // Limpa erros e atualiza
+      form.clearErrors('installments');
       form.clearErrors(`installments.${index}.amount`);
       form.setValue('installments', updatedInstallments);
     }, 100);
   };
 
+  const openPaidInstallmentAdjustmentDialog = (type: 'edit' | 'delete', index: number) => {
+    const installment = form.getValues('installments')[index];
+    if (!installment) return;
+
+    setPendingAdjustment({
+      type,
+      index,
+      installmentNumber: installment.installment_number,
+      originalId: installment.original_id,
+    });
+    setAdjustmentConfirmText('');
+    setAdjustmentDialogOpen(true);
+  };
+
+  const confirmPaidInstallmentAdjustment = () => {
+    if (!pendingAdjustment) return;
+
+    if (pendingAdjustment.type === 'edit') {
+      const { originalId } = pendingAdjustment;
+      if (originalId) {
+        setEditPaidInstallmentIds((prev) =>
+          prev.includes(originalId)
+            ? prev
+            : [...prev, originalId],
+        );
+      }
+    } else {
+      removeInstallmentAndRebalance(pendingAdjustment.index);
+    }
+
+    setAdjustmentDialogOpen(false);
+    setAdjustmentConfirmText('');
+    setPendingAdjustment(null);
+  };
+
   const onSubmit = async (data: SaleFormData) => {
     try {
       let buyerId = data.buyer_id;
+      const getInstallmentStatus = (paidAmount: number, amount: number) => {
+        if (amount <= 0 || paidAmount >= amount) return 'paid';
+        if (paidAmount > 0) return 'partial';
+        return 'pending';
+      };
 
       // Validação condicional do buyer_id
       if (!showBuyerForm && (!buyerId || buyerId.trim() === '')) {
@@ -518,10 +685,81 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       }
 
       if (isEditMode && sale) {
+        const originalInstallmentById = new Map(sale.installments.map((inst) => [inst.id, inst]));
+
+        if (isFullyPaidSale) {
+          if (Math.abs(data.sale_price - sale.sale_price) >= 0.01) {
+            form.setError('sale_price', {
+              type: 'manual',
+              message: 'Venda quitada não permite alterar o valor total.',
+            });
+            return;
+          }
+
+          if (data.payment_mode !== sale.payment_mode) {
+            form.setError('installments', {
+              type: 'manual',
+              message: 'Venda quitada não permite alterar a forma de pagamento.',
+            });
+            return;
+          }
+
+          const hasInstallmentChange =
+            data.installments.length !== sale.installments.length ||
+            data.installments.some((installment) => {
+              if (!installment.original_id) return true;
+              const originalInstallment = originalInstallmentById.get(installment.original_id);
+              if (!originalInstallment) return true;
+
+              const dueDate = installment.due_date ? format(installment.due_date, 'yyyy-MM-dd') : null;
+              const originalDueDate = originalInstallment.due_date || null;
+
+              return (
+                Math.abs(installment.amount - originalInstallment.amount) >= 0.01 ||
+                dueDate !== originalDueDate ||
+                installment.installment_number !== originalInstallment.installment_number
+              );
+            });
+
+          if (hasInstallmentChange) {
+            form.setError('installments', {
+              type: 'manual',
+              message: 'Venda quitada não permite alterar parcelas.',
+            });
+            return;
+          }
+        }
+
+        for (let i = 0; i < data.installments.length; i++) {
+          const installment = data.installments[i];
+          if (!installment.original_id) continue;
+          const originalInstallment = originalInstallmentById.get(installment.original_id);
+          if (!originalInstallment) continue;
+
+          if (
+            originalInstallment.paid_amount > 0 &&
+            editPaidInstallmentIds.includes(originalInstallment.id) &&
+            installment.amount < originalInstallment.paid_amount
+          ) {
+            form.setError(`installments.${i}.amount`, {
+              type: 'manual',
+              message: `Valor não pode ser menor que o total já pago (R$ ${originalInstallment.paid_amount.toFixed(2)}).`,
+            });
+            return;
+          }
+
+          if (
+            originalInstallment.paid_amount > 0 &&
+            !editPaidInstallmentIds.includes(originalInstallment.id)
+          ) {
+            form.clearErrors(`installments.${i}.amount`);
+          }
+        }
+
         // Modo de edição
         await updateSale.mutateAsync({
           id: sale.id,
-          buyer_id: data.buyer_id,
+          buyer_id: buyerId,
           product_description: data.product_description,
           purchase_price: data.purchase_price || null,
           sale_price: data.sale_price,
@@ -531,63 +769,175 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
           notes: data.notes || null,
         });
 
-        // Gerenciar parcelas: atualizar, criar novas e deletar removidas
         const existingInstallments = sale.installments;
-        const existingIds = existingInstallments.map((inst) => inst.id);
-        
-        // Mapear parcelas do formulário para IDs existentes (por número de parcela)
-        const formToExistingMap = new Map<string, string>();
-        data.installments.forEach((formInst) => {
-          const existing = existingInstallments.find(
-            (e) => e.installment_number === formInst.installment_number
-          );
-          if (existing) {
-            formToExistingMap.set(formInst.installment_number.toString(), existing.id);
+
+        if (data.payment_mode === 'flexible') {
+          const switchedFromFixed = sale.payment_mode === 'fixed';
+          const totalPaid = existingInstallments.reduce((sum, inst) => sum + inst.paid_amount, 0);
+          const remainingBalance = Math.max(0, data.sale_price - totalPaid);
+
+          if (switchedFromFixed) {
+            const installmentsWithHistory = existingInstallments.filter((inst) => inst.paid_amount > 0);
+            const installmentsWithoutHistory = existingInstallments.filter((inst) => inst.paid_amount <= 0);
+
+            if (installmentsWithoutHistory.length > 0) {
+              const { error } = await supabase
+                .from('installments')
+                .delete()
+                .in(
+                  'id',
+                  installmentsWithoutHistory.map((inst) => inst.id),
+                );
+              if (error) throw error;
+            }
+
+            for (const historicalInstallment of installmentsWithHistory) {
+              const settledAmount = historicalInstallment.paid_amount;
+              const { error } = await supabase
+                .from('installments')
+                .update({
+                  amount: settledAmount,
+                  paid_amount: settledAmount,
+                  status: 'paid',
+                })
+                .eq('id', historicalInstallment.id);
+              if (error) throw error;
+            }
+
+            if (remainingBalance > 0 || installmentsWithHistory.length === 0) {
+              const nextInstallmentNumber =
+                installmentsWithHistory.length > 0
+                  ? Math.max(...installmentsWithHistory.map((inst) => inst.installment_number)) + 1
+                  : 1;
+
+              const { error } = await supabase.from('installments').insert({
+                sale_id: sale.id,
+                amount: remainingBalance,
+                due_date: null,
+                status: getInstallmentStatus(0, remainingBalance),
+                paid_amount: 0,
+                installment_number: nextInstallmentNumber,
+              });
+              if (error) throw error;
+            }
+          } else {
+            const sortedInstallments = [...existingInstallments].sort(
+              (a, b) => b.installment_number - a.installment_number,
+            );
+            const activeFlexibleInstallment =
+              sortedInstallments.find((inst) => inst.amount > inst.paid_amount) ||
+              sortedInstallments[0] ||
+              null;
+
+            if (!activeFlexibleInstallment) {
+              const { error } = await supabase.from('installments').insert({
+                sale_id: sale.id,
+                amount: remainingBalance,
+                due_date: null,
+                status: getInstallmentStatus(0, remainingBalance),
+                paid_amount: 0,
+                installment_number: 1,
+              });
+              if (error) throw error;
+            } else {
+              const adjustedAmount = activeFlexibleInstallment.paid_amount + remainingBalance;
+              const { error: activeUpdateError } = await supabase
+                .from('installments')
+                .update({
+                  amount: adjustedAmount,
+                  due_date: null,
+                  status: getInstallmentStatus(activeFlexibleInstallment.paid_amount, adjustedAmount),
+                })
+                .eq('id', activeFlexibleInstallment.id);
+              if (activeUpdateError) throw activeUpdateError;
+
+              const installmentsToFreeze = existingInstallments.filter(
+                (inst) => inst.id !== activeFlexibleInstallment.id && inst.amount > inst.paid_amount,
+              );
+
+              for (const installmentToFreeze of installmentsToFreeze) {
+                const settledAmount = installmentToFreeze.paid_amount;
+                const { error } = await supabase
+                  .from('installments')
+                  .update({
+                    amount: settledAmount,
+                    paid_amount: settledAmount,
+                    status: 'paid',
+                  })
+                  .eq('id', installmentToFreeze.id);
+                if (error) throw error;
+              }
+            }
           }
-        });
+        } else {
+          // Gerenciar parcelas fixas: atualizar, criar novas e deletar removidas
+          const existingIds = existingInstallments.map((inst) => inst.id);
 
-        const formIds = Array.from(formToExistingMap.values());
+          // Mapear parcelas do formulário para IDs existentes (prioriza original_id)
+          const formToExistingMap = new Map<string, string>();
+          data.installments.forEach((formInst) => {
+            const existing = formInst.original_id
+              ? existingInstallments.find((e) => e.id === formInst.original_id)
+              : existingInstallments.find((e) => e.installment_number === formInst.installment_number);
+            if (existing) {
+              const formKey = formInst.original_id || formInst.installment_number.toString();
+              formToExistingMap.set(formKey, existing.id);
+            }
+          });
 
-        // Deletar parcelas removidas (que não estão mais no formulário)
-        const toDelete = existingIds.filter((id) => !formIds.includes(id));
-        for (const id of toDelete) {
-          const { error } = await supabase.from('installments').delete().eq('id', id);
-          if (error) throw error;
-        }
+          const formIds = Array.from(formToExistingMap.values());
 
-        // Atualizar ou criar parcelas
-        for (let i = 0; i < data.installments.length; i++) {
-          const inst = data.installments[i];
-          const existingId = formToExistingMap.get(inst.installment_number.toString());
-          const existingInst = existingId
-            ? existingInstallments.find((e) => e.id === existingId)
-            : null;
+          // Deletar parcelas removidas (que não estão mais no formulário)
+          const toDelete = existingIds.filter((id) => !formIds.includes(id));
+          for (const id of toDelete) {
+            const { error } = await supabase.from('installments').delete().eq('id', id);
+            if (error) throw error;
+          }
 
-          if (existingInst) {
-            // Atualizar parcela existente (preservar paid_amount e status)
-            const { error } = await supabase
-              .from('installments')
-              .update({
+          // Atualizar ou criar parcelas
+          for (let i = 0; i < data.installments.length; i++) {
+            const inst = data.installments[i];
+            const formKey = inst.original_id || inst.installment_number.toString();
+            const existingId = formToExistingMap.get(formKey);
+            const existingInst = existingId
+              ? existingInstallments.find((e) => e.id === existingId)
+              : null;
+
+            if (existingInst) {
+              const isProtectedPaidInstallment =
+                existingInst.paid_amount > 0 && !editPaidInstallmentIds.includes(existingInst.id);
+              const amountToPersist = isProtectedPaidInstallment ? existingInst.amount : inst.amount;
+              const dueDateToPersist = isProtectedPaidInstallment
+                ? existingInst.due_date
+                : inst.due_date
+                ? format(inst.due_date, 'yyyy-MM-dd')
+                : null;
+
+              // Atualizar parcela existente (preservar paid_amount e status)
+              const { error } = await supabase
+                .from('installments')
+                .update({
+                  amount: amountToPersist,
+                  due_date: dueDateToPersist,
+                  installment_number: inst.installment_number,
+                  // Preservar paid_amount e status
+                  paid_amount: existingInst.paid_amount,
+                  status: existingInst.status,
+                })
+                .eq('id', existingInst.id);
+              if (error) throw error;
+            } else {
+              // Criar nova parcela
+              const { error } = await supabase.from('installments').insert({
+                sale_id: sale.id,
                 amount: inst.amount,
                 due_date: inst.due_date ? format(inst.due_date, 'yyyy-MM-dd') : null,
+                status: 'pending',
+                paid_amount: 0,
                 installment_number: inst.installment_number,
-                // Preservar paid_amount e status
-                paid_amount: existingInst.paid_amount,
-                status: existingInst.status,
-              })
-              .eq('id', existingInst.id);
-            if (error) throw error;
-          } else {
-            // Criar nova parcela
-            const { error } = await supabase.from('installments').insert({
-              sale_id: sale.id,
-              amount: inst.amount,
-              due_date: inst.due_date ? format(inst.due_date, 'yyyy-MM-dd') : null,
-              status: 'pending',
-              paid_amount: 0,
-              installment_number: inst.installment_number,
-            });
-            if (error) throw error;
+              });
+              if (error) throw error;
+            }
           }
         }
       } else {
@@ -639,8 +989,11 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
       onSuccess();
     } catch (error) {
       console.error(error);
+      toast.error('Não foi possível salvar as alterações da venda.');
     }
   };
+
+  const isSubmitting = createSale.isPending || updateSale.isPending;
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -988,6 +1341,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                       <FormControl>
                         <CurrencyInput
                           value={field.value}
+                          disabled={isFullyPaidSale}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                         />
@@ -1045,6 +1399,7 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                   <Tabs
                     value={paymentMode}
                     onValueChange={(v) => {
+                      if (isFullyPaidSale) return;
                       const mode = v as 'fixed' | 'flexible';
                       setPaymentMode(mode);
                       form.setValue('payment_mode', mode);
@@ -1055,11 +1410,31 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                     }}
                   >
                     <TabsList>
-                      <TabsTrigger value="fixed">Parcelamento Fixo</TabsTrigger>
-                      <TabsTrigger value="flexible">Pagamento Flexível</TabsTrigger>
+                      <TabsTrigger value="fixed" disabled={isFullyPaidSale}>
+                        Parcelamento Fixo
+                      </TabsTrigger>
+                      <TabsTrigger value="flexible" disabled={isFullyPaidSale}>
+                        Pagamento Flexível
+                      </TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
+
+                {isFullyPaidSale && (
+                  <Alert>
+                    <AlertDescription>
+                      Esta venda já está totalmente paga. As parcelas e a forma de pagamento não podem ser alteradas.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {!isFullyPaidSale && hasAnyPaidInstallment && paymentMode === 'fixed' && (
+                  <Alert>
+                    <AlertDescription>
+                      Parcelas com histórico de pagamento ficam protegidas. Para alterar ou excluir uma parcela paga, use o fluxo de ajuste com confirmação forte.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {paymentMode === 'flexible' ? (
                   <div className="border border-border/70 rounded-2xl p-4 bg-input">
@@ -1083,7 +1458,9 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                       <h3 className="text-base font-semibold">Parcelas</h3>
                       <Tabs value={parcelMode} onValueChange={(v) => setParcelMode(v as 'auto' | 'manual')}>
                         <TabsList>
-                          <TabsTrigger value="auto">Automático</TabsTrigger>
+                          <TabsTrigger value="auto" disabled={isFullyPaidSale || (isEditMode && hasAnyPaidInstallment)}>
+                            Automático
+                          </TabsTrigger>
                           <TabsTrigger value="manual">Manual</TabsTrigger>
                         </TabsList>
                       </Tabs>
@@ -1100,12 +1477,23 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                               max={100}
                               placeholder="Número de parcelas"
                               className="w-full"
+                              disabled={isFullyPaidSale || (isEditMode && hasAnyPaidInstallment)}
                             />
                           </div>
-                          <Button type="button" onClick={handleAutoSplit} className="w-full sm:w-auto">
+                          <Button
+                            type="button"
+                            onClick={handleAutoSplit}
+                            className="w-full sm:w-auto"
+                            disabled={isFullyPaidSale || (isEditMode && hasAnyPaidInstallment)}
+                          >
                             Gerar Parcelas
                           </Button>
                         </div>
+                        {isEditMode && hasAnyPaidInstallment && (
+                          <p className="text-xs text-muted-foreground">
+                            O modo automático foi bloqueado porque há parcelas com pagamento registrado.
+                          </p>
+                        )}
                         {fields.length > 0 && (
                           <p className="text-sm text-muted-foreground">
                             {fields.length} parcela(s) cadastrada(s) - Total:{' '}
@@ -1117,7 +1505,12 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <Button type="button" onClick={handleAddManualParcel} variant="outline">
+                        <Button
+                          type="button"
+                          onClick={handleAddManualParcel}
+                          variant="outline"
+                          disabled={isFullyPaidSale}
+                        >
                           <Plus className="mr-2 h-4 w-4" />
                           Adicionar Parcela
                         </Button>
@@ -1135,76 +1528,112 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
                     )}
 
                     <div className="space-y-2">
-                      {fields.map((field, index) => (
-                        <div key={field.id} className="flex gap-3 items-end p-5 border border-border/70 rounded-2xl bg-input">
-                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <FormField
-                              control={form.control}
-                              name={`installments.${index}.amount`}
-                              render={({ field }) => (
-                                <FormItem className="space-y-2">
-                                  <FormLabel>Valor</FormLabel>
-                                  <FormControl>
-                                    <CurrencyInput
-                                      value={field.value}
-                                      onChange={(newValue) => {
-                                        field.onChange(newValue);
-                                        handleInstallmentAmountChange(index);
-                                      }}
-                                      onBlur={() => {
-                                        field.onBlur();
-                                        handleInstallmentAmountBlur(index);
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`installments.${index}.due_date`}
-                              render={({ field }) => (
-                                <FormItem className="space-y-2">
-                                  <FormLabel>Data de Vencimento</FormLabel>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
+                      {fields.map((field, index) => {
+                        const installmentData = installments[index];
+                        const installmentPaid = installmentData ? isInstallmentPaid(installmentData) : false;
+                        const installmentEditable = installmentData
+                          ? isPaidInstallmentEditable(installmentData)
+                          : true;
+                        const disableInstallment = isFullyPaidSale || (installmentPaid && !installmentEditable);
+
+                        return (
+                          <div key={field.id} className="flex gap-3 items-end p-5 border border-border/70 rounded-2xl bg-input">
+                            <div className="flex-1 space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="text-sm font-medium">
+                                  Parcela {installmentData?.installment_number || index + 1}
+                                </div>
+                                {installmentPaid && (
+                                  <Badge className="bg-green-600 text-white">Pago</Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <FormField
+                                  control={form.control}
+                                  name={`installments.${index}.amount`}
+                                  render={({ field }) => (
+                                    <FormItem className="space-y-2">
+                                      <FormLabel>Valor</FormLabel>
                                       <FormControl>
-                                        <Button
-                                          variant="outline"
-                                          className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                                        >
-                                          {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Selecione uma data</span>}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
+                                        <CurrencyInput
+                                          value={field.value}
+                                          disabled={disableInstallment}
+                                          onChange={(newValue) => {
+                                            field.onChange(newValue);
+                                            handleInstallmentAmountChange(index);
+                                          }}
+                                          onBlur={() => {
+                                            field.onBlur();
+                                            handleInstallmentAmountBlur(index);
+                                          }}
+                                        />
                                       </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={field.value || undefined}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                                </FormItem>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`installments.${index}.due_date`}
+                                  render={({ field }) => (
+                                    <FormItem className="space-y-2">
+                                      <FormLabel>Data de Vencimento</FormLabel>
+                                      <Popover>
+                                        <PopoverTrigger asChild disabled={disableInstallment}>
+                                          <FormControl>
+                                            <Button
+                                              variant="outline"
+                                              disabled={disableInstallment}
+                                              className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                                            >
+                                              {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Selecione uma data</span>}
+                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                          </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={field.value || undefined}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              {installmentPaid && !installmentEditable && !isFullyPaidSale && (
+                                <div className="flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openPaidInstallmentAdjustmentDialog('edit', index)}
+                                  >
+                                    Ajustar
+                                  </Button>
+                                </div>
                               )}
-                            />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveInstallment(index)}
+                              disabled={isFullyPaidSale || fields.length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveInstallment(index)}
-                            disabled={fields.length <= 1}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                    {typeof form.formState.errors.installments?.message === 'string' && (
+                      <p className="text-sm text-destructive">{form.formState.errors.installments.message}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -1213,17 +1642,22 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
 
           <div className="flex justify-end gap-3 pt-1">
           {isEditMode ? (
-            <Button type="submit" disabled={createSale.isPending || updateSale.isPending}>
-              {createSale.isPending || updateSale.isPending
+            <>
+              <Button type="button" variant="outline" onClick={onSuccess} disabled={isSubmitting}>
+                Cancelar Edição
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
                 ? 'Salvando...'
                 : 'Salvar Alterações'}
-            </Button>
+              </Button>
+            </>
           ) : (
             <>
               <Button type="button" variant="outline" onClick={onSuccess}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createSale.isPending || updateSale.isPending}>
+              <Button type="submit" disabled={isSubmitting}>
                 {createSale.isPending ? 'Salvando...' : 'Criar Venda'}
               </Button>
             </>
@@ -1231,6 +1665,62 @@ export function SaleForm({ onSuccess, sale }: SaleFormProps) {
         </div>
       </form>
     </Form>
+
+    <Dialog
+      open={adjustmentDialogOpen}
+      onOpenChange={(open) => {
+        setAdjustmentDialogOpen(open);
+        if (!open) {
+          setPendingAdjustment(null);
+          setAdjustmentConfirmText('');
+        }
+      }}
+    >
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Confirmar ajuste de parcela paga</DialogTitle>
+          <DialogDescription>
+            {pendingAdjustment?.type === 'delete'
+              ? `Você está prestes a excluir a parcela ${pendingAdjustment?.installmentNumber}, que possui pagamento registrado. Esta ação vai redistribuir o saldo restante entre as parcelas editáveis.`
+              : `Você está prestes a liberar a parcela ${pendingAdjustment?.installmentNumber} para edição manual, mesmo com pagamento registrado.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Para confirmar, digite <span className="font-semibold">AJUSTAR</span>.
+          </p>
+          <Input
+            id="adjustment-confirmation"
+            name="adjustment-confirmation"
+            value={adjustmentConfirmText}
+            onChange={(event) => setAdjustmentConfirmText(event.target.value)}
+            placeholder="Digite AJUSTAR"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setAdjustmentDialogOpen(false);
+              setPendingAdjustment(null);
+              setAdjustmentConfirmText('');
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={confirmPaidInstallmentAdjustment}
+            disabled={adjustmentConfirmText.trim().toUpperCase() !== 'AJUSTAR'}
+          >
+            Confirmar Ajuste
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }

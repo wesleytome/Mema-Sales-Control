@@ -89,11 +89,21 @@ export function PaymentUpload() {
     );
   }, [sale, pendingInstallmentIds]);
 
+  const flexibleInstallment = useMemo(() => {
+    if (!sale || sale.payment_mode !== 'flexible') return null;
+
+    const sortedInstallments = [...sale.installments].sort(
+      (a, b) => b.installment_number - a.installment_number,
+    );
+
+    return sortedInstallments.find((inst) => inst.status !== 'paid') || sortedInstallments[0] || null;
+  }, [sale]);
+
   const targetInstallment = useMemo(() => {
     if (!sale) return null;
-    if (sale.payment_mode === 'flexible') return sale.installments[0] || null;
+    if (sale.payment_mode === 'flexible') return flexibleInstallment;
     return nextPendingInstallment;
-  }, [sale, nextPendingInstallment]);
+  }, [sale, flexibleInstallment, nextPendingInstallment]);
 
   const hasPendingForTargetInstallment = useMemo(
     () => (targetInstallment ? pendingInstallmentIds.has(targetInstallment.id) : false),
